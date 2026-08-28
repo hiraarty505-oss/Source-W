@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Source Code W — Peek under the hood</title>
+  <meta name="description" content="Retrieve the complete source code of any website with a stunning 3D interactive experience." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Noise overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <!-- Landing 3D Scene -->
+  <div id="landing" class="landing">
+    <canvas id="landing-canvas"></canvas>
+    <div class="landing-content">
+      <h1 id="landing-title" class="landing-title" aria-label="Source Code W">
+        <span class="letter" data-char="S">S</span>
+        <span class="letter" data-char="O">O</span>
+        <span class="letter" data-char="U">U</span>
+        <span class="letter" data-char="R">R</span>
+        <span class="letter" data-char="C">C</span>
+        <span class="letter" data-char="E">E</span>
+        <span class="letter space">&nbsp;</span>
+        <span class="letter" data-char="C">C</span>
+        <span class="letter" data-char="O">O</span>
+        <span class="letter" data-char="D">D</span>
+        <span class="letter" data-char="E">E</span>
+        <span class="letter space">&nbsp;</span>
+        <span class="letter" data-char="W">W</span>
+      </h1>
+      <p id="landing-tagline" class="landing-tagline">Peek under the hood</p>
+    </div>
+    <button id="skip-landing" class="skip-btn" type="button">Skip intro</button>
+  </div>
+
+  <!-- Main App -->
+  <main id="app" class="app hidden" aria-hidden="true">
+    <!-- Background particles (CSS) -->
+    <div class="bg-particles" id="bg-particles" aria-hidden="true"></div>
+
+    <!-- Floating Card -->
+    <div class="ui-stage">
+      <div id="main-card" class="main-card glass-card">
+        <header class="card-header">
+          <div class="logo-mark">
+            <span class="logo-brackets">{ }</span>
+            <span class="logo-text">SOURCE CODE W</span>
+          </div>
+          <p class="card-subtitle">Retrieve complete source of any website</p>
+        </header>
+
+        <form id="url-form" class="url-form" autocomplete="off">
+          <div class="input-slot" id="input-slot">
+            <label for="url-input" class="sr-only">Website URL</label>
+            <input
+              type="url"
+              id="url-input"
+              class="url-input"
+              placeholder="Enter website URL (e.g., https://example.com)"
+              required
+              spellcheck="false"
+            />
+            <div class="scan-line" id="scan-line" aria-hidden="true"></div>
+          </div>
+          <button type="submit" id="retrieve-btn" class="btn-3d retrieve-btn">
+            <span class="btn-label">RETRIEVE SOURCE</span>
+            <span class="btn-ripple"></span>
+          </button>
+        </form>
+
+        <div id="error-box" class="error-box hidden" role="alert">
+          <div class="error-icon">!</div>
+          <p id="error-message" class="error-message"></p>
+          <button type="button" id="retry-btn" class="btn-3d btn-small">Retry</button>
+        </div>
+
+        <div id="meta-bar" class="meta-bar hidden">
+          <span id="meta-size" class="meta-item">—</span>
+          <span id="meta-lines" class="meta-item">—</span>
+          <span id="meta-time" class="meta-item">—</span>
+          <span id="meta-type" class="meta-item">—</span>
+        </div>
+      </div>
+
+      <!-- Transfer Animation Overlay -->
+      <div id="transfer-overlay" class="transfer-overlay hidden" aria-hidden="true">
+        <div class="tunnel" id="tunnel"></div>
+        <div class="packets" id="packets"></div>
+        <div class="receiving-dock" id="receiving-dock">
+          <div class="dock-platform"></div>
+          <div class="file-piles" id="file-piles"></div>
+          <div class="progress-text" id="progress-text">Retrieving… 0%</div>
+        </div>
+        <div class="crystal" id="crystal"></div>
+      </div>
+
+      <!-- Results Panel (drawer) -->
+      <section id="results-panel" class="results-panel glass-card hidden" aria-label="Source code preview">
+        <div class="results-header">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-tab="html" role="tab" aria-selected="true">HTML</button>
+            <button class="tab" data-tab="css" role="tab" aria-selected="false">CSS</button>
+            <button class="tab" data-tab="js" role="tab" aria-selected="false">JS</button>
+            <button class="tab" data-tab="raw" role="tab" aria-selected="false">RAW</button>
+          </div>
+          <div class="results-actions">
+            <div class="search-wrap">
+              <input type="search" id="code-search" class="code-search" placeholder="Search code…" />
+            </div>
+            <button type="button" id="copy-btn" class="btn-3d btn-small">Copy All</button>
+            <button type="button" id="close-results" class="btn-3d btn-icon" aria-label="Close results">×</button>
+          </div>
+        </div>
+
+        <div class="results-body">
+          <aside class="file-sidebar" id="file-sidebar">
+            <div class="sidebar-title">Files</div>
+            <ul class="file-tree" id="file-tree"></ul>
+          </aside>
+          <div class="code-area">
+            <div class="code-toolbar">
+              <label class="view-toggle">
+                <input type="checkbox" id="pretty-print" checked />
+                Pretty Print
+              </label>
+              <label class="view-toggle">
+                <input type="checkbox" id="split-view" />
+                Split View
+              </label>
+            </div>
+            <div class="code-wrapper" id="code-wrapper">
+              <pre class="line-numbers"><code id="code-content" class="language-html"></code></pre>
+              <div id="minimap" class="minimap" aria-hidden="true"></div>
+            </div>
+            <div id="split-preview" class="split-preview hidden">
+              <iframe id="preview-iframe" sandbox="allow-same-origin" title="Rendered preview"></iframe>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" />
+  <script src="app.js"></script>
+</body>
+</html>
