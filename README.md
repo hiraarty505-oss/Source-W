@@ -1,62 +1,65 @@
-# Source Code W v2 — Smart Source Inspector
+# Source W
 
-Educational HTML inspector. Safely peeks at the **initial document only** of public websites.
+**Extract · Preview · Download** — any website’s HTML, CSS, JavaScript and assets from a single URL.
 
-## Key changes from v1
+Runs entirely in your browser. Nothing you extract is uploaded to a server (except optional public CORS proxies when a site blocks direct fetch).
 
-| Aspect | Implementation |
-|--------|----------------|
-| Landing animation | **Canvas 2D** particle network (nodes + connections). No Three.js. |
-| Rate limiting | In-memory (5 req / IP / min). Swap for **Vercel KV** or **Upstash Redis** in production. |
-| HTML fetch | Edge Function `fetch()` with `redirect: 'manual'`, 10 s timeout, Cheerio parse. |
-| Source maps | `productionBrowserSourceMaps: false` in `next.config.js`. |
-| Watermark | CSS `::before` + overlay: “Source Code W — Preview Only”. |
-| Scope | First HTML ≤ 500 KB, preview truncated to 200 lines. Resources listed, never fetched. |
-
-## Stack
-
-- Next.js 14 (App Router) + TypeScript
-- Tailwind CSS (GitHub-dark inspired palette)
-- Cheerio (server-side HTML parse)
-- Edge Runtime API route
-- Framer Motion ready (optional micro-interactions)
-
-## Security
-
-- Strict URL validation (http/https only, max 2048 chars)
-- Private IP / localhost / file:// blocked
-- Domain blocklist (gov, banking, etc.)
-- CSRF token (issued on GET `/api/inspect`, required on POST)
-- Honeypot field
-- Rate limit → HTTP 429 + `Retry-After`
-- Transparent bot User-Agent (no browser spoofing)
-- CSP + security headers
-- Generic 500 responses (no stack traces)
-- No production browser source maps
-
-## Local development
+## Quick start
 
 ```bash
-npm install
-npm run dev
+# Option A — open the file
+open index.html   # macOS
+# or double-click index.html
+
+# Option B — local server (recommended; avoids some file:// quirks)
+npm start
+# then open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Features
 
-## Production notes
+- Immersive black/white landing (particles, 3D prism logo, typewriter)
+- Real CSS 3D (perspective, card tilt, button depth)
+- Mobile-first layout (48px touch targets, no iOS input zoom)
+- Extraction with CORS fallback (`allorigins` → clear error if blocked)
+- Tabs: HTML · CSS · JS · Resources · live Preview
+- Syntax highlighting, file sizes, copy & download
+- Dramatic extract overlay (scanner, data streams, particle burst)
+- `prefers-reduced-motion` respected
 
-1. Replace in-memory rate limit & CSRF store with **Vercel KV** or **Upstash Redis**.
-2. Deploy to Vercel — Edge route is ready.
-3. Keep `productionBrowserSourceMaps: false`.
-4. Never commit `.env` files.
+## Keyboard
 
-## Prohibited (by design)
+| Key | Action |
+|-----|--------|
+| `Esc` | Skip landing |
+| `Ctrl` + `Enter` | Start extract (from URL field) |
 
-- Recursive CSS/JS/image fetching  
-- Full-site ZIP download  
-- Client-side CORS proxy tricks  
-- Heavy 3D scenes  
+## CORS note
 
----
+Many sites block browser `fetch` from other origins. Source W tries:
 
-© Source Code W · Educational use only · Respect robots.txt
+1. Direct `fetch`
+2. Public proxy (`api.allorigins.win`)
+
+If both fail, you’ll see a toast. For reliable use, run your own proxy (e.g. a Cloudflare Worker) and point the app at it.
+
+## Browser support
+
+- Modern Chromium, Firefox, Safari
+- WebGL not required (Canvas 2D + CSS 3D only)
+- WebGPU not required
+
+## Project files
+
+| File | Role |
+|------|------|
+| `index.html` | Structure, landing + app shell |
+| `style.css` | Monochrome design system + 3D + motion |
+| `script.js` | Particles, extract, parse, highlight, download |
+| `favicon.svg` | Tab icon |
+| `manifest.webmanifest` | Installable / theme color |
+| `robots.txt` | Crawlers (if hosted publicly) |
+
+## License
+
+Use and modify freely for personal or commercial projects.

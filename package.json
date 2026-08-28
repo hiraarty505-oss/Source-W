@@ -1,0 +1,10 @@
+{
+  "name": "source-w",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Extract, preview, and download any website's source code in the browser.",
+  "scripts": {
+    "start": "npx --yes serve . -p 3000",
+    "serve": "npx --yes serve . -p 3000"
+  }
+}

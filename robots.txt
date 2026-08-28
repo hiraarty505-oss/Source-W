@@ -1,0 +1,6 @@
+# Source W — static client-side tool
+User-agent: *
+Allow: /
+
+# Optional: disallow if you host a private proxy endpoint
+# Disallow: /proxy/
