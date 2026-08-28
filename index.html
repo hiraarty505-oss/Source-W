@@ -2,252 +2,167 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Source W — Extract. Preview. Download. Any Website's Source Code.</title>
-  <meta name="description" content="Source W extracts the complete HTML, CSS, JavaScript and assets of any website from a single URL.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Source W — Website Source Code Extractor</title>
+  <meta name="description" content="Extract, preview, and download any website's HTML, CSS, JavaScript and assets from a single URL.">
   <meta name="theme-color" content="#000000">
-  <meta name="color-scheme" content="dark">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Source W">
-
-  <!-- Open Graph / social -->
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Source W — Extract any website's source">
-  <meta property="og:description" content="Paste a URL. Get HTML, CSS, JS and assets — with live preview. Runs in your browser.">
-  <meta property="og:locale" content="en_US">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Source W — Extract any website's source">
-  <meta name="twitter:description" content="Paste a URL. Get HTML, CSS, JS and assets — with live preview.">
-
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23000'/%3E%3Cpath d='M6 8 L10 24 L16 12 L22 24 L26 8' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- ========== LANDING ========== -->
-  <div id="landing" class="landing perspective-container" aria-label="Welcome">
-    <canvas id="particle-canvas" class="particle-canvas" aria-hidden="true"></canvas>
+<!-- LANDING OVERLAY -->
+<section id="landing" class="landing-overlay" aria-label="Welcome">
+  <canvas id="particle-canvas" aria-hidden="true"></canvas>
 
-    <div class="landing-content preserve-3d">
-      <!-- 3D Logo W built from prisms -->
-      <div class="logo-3d preserve-3d" id="logo3d" aria-hidden="true">
-        <div class="logo-prism prism-left"></div>
-        <div class="logo-prism prism-mid-left"></div>
-        <div class="logo-prism prism-mid-right"></div>
-        <div class="logo-prism prism-right"></div>
-        <div class="logo-shadow"></div>
-      </div>
+  <div class="shape-3d shape-cube-1" aria-hidden="true">
+    <div class="cube-face"></div><div class="cube-face"></div><div class="cube-face"></div>
+    <div class="cube-face"></div><div class="cube-face"></div><div class="cube-face"></div>
+  </div>
+  <div class="shape-3d shape-cube-2" aria-hidden="true">
+    <div class="cube-face"></div><div class="cube-face"></div><div class="cube-face"></div>
+    <div class="cube-face"></div><div class="cube-face"></div><div class="cube-face"></div>
+  </div>
+  <div class="shape-3d shape-pyramid" aria-hidden="true">
+    <div class="pyr-face"></div><div class="pyr-face"></div>
+    <div class="pyr-face"></div><div class="pyr-face"></div>
+  </div>
 
-      <h1 class="landing-title">Source <span class="w-letter">W</span></h1>
-      <p class="landing-tagline" id="tagline" aria-live="polite"></p>
-
-      <button type="button" class="btn-3d btn-enter" id="enterBtn">
-        <span class="btn-3d-face btn-3d-front">Enter</span>
-        <span class="btn-3d-face btn-3d-depth" aria-hidden="true"></span>
-      </button>
-
-      <!-- Wireframe cubes at different Z depths -->
-      <div class="geo-shape geo-1 preserve-3d" aria-hidden="true"><span></span></div>
-      <div class="geo-shape geo-2 preserve-3d" aria-hidden="true"><span></span></div>
-      <div class="geo-shape geo-3 preserve-3d" aria-hidden="true"><span></span></div>
-      <div class="geo-shape geo-4 preserve-3d" aria-hidden="true"><span></span></div>
-      <div class="geo-shape geo-5 preserve-3d" aria-hidden="true"><span></span></div>
+  <div class="logo-3d-container">
+    <div class="logo-3d" aria-hidden="true">
+      <div class="w-face w-left"></div>
+      <div class="w-face w-mid-left"></div>
+      <div class="w-face w-mid-right"></div>
+      <div class="w-face w-right"></div>
+      <div class="w-face w-back-left"></div>
+      <div class="w-face w-back-right"></div>
     </div>
-
+    <h1 class="logo-text">Source W</h1>
+    <p class="tagline" id="tagline" aria-live="polite"></p>
+    <button type="button" class="btn-3d-enter" id="enterBtn">Enter</button>
     <p class="landing-skip"><kbd>Esc</kbd> to skip</p>
   </div>
+</section>
 
-  <!-- ========== MAIN APP ========== -->
-  <div id="mainApp" class="main-app" hidden>
-    <header class="header">
-      <div class="header-inner">
-        <a href="#top" class="brand preserve-3d" id="brandLogo">
-          <span class="brand-mark preserve-3d" aria-hidden="true">
-            <span class="brand-face brand-front"></span>
-            <span class="brand-face brand-side"></span>
-            <span class="brand-face brand-top"></span>
-          </span>
-          <span class="brand-name">Source <strong>W</strong></span>
-        </a>
-        <nav class="header-nav" aria-label="Primary">
-          <a href="#extract">Extract</a>
-          <a href="#results">Results</a>
-        </nav>
+<!-- MAIN APP -->
+<main id="mainApp" class="main-app hidden">
+
+  <header class="app-header">
+    <div class="header-logo">
+      <div class="mini-logo" aria-hidden="true">W</div>
+      <div>
+        <h2>Source W</h2>
+        <span>extract · preview · download</span>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <main>
-      <div id="top"></div>
+  <section class="input-section">
+    <div class="input-card card-3d" id="inputCard">
+      <label for="urlInput">Website URL</label>
+      <input type="url" id="urlInput" placeholder="https://example.com" autocomplete="off" inputmode="url" required>
+      <button type="button" class="btn-3d btn-extract" id="extractBtn">
+        <span class="btn-text">Extract</span>
+        <span class="btn-loader hidden">Extracting…</span>
+      </button>
+      <p class="input-hint">Paste a full URL with http:// or https:// — then press Extract or Ctrl+Enter</p>
+    </div>
+  </section>
 
-      <!-- Extract -->
-      <section class="section" id="extract">
-        <div class="section-inner">
-          <h2 class="section-title">Drop in a URL</h2>
-          <p class="section-sub">Paste any website URL. Source W fetches HTML, CSS, JS and assets — with a CORS proxy fallback when needed.</p>
+  <section class="action-bar hidden" id="actionBar">
+    <button type="button" class="btn-3d btn-download" data-type="html">Download HTML</button>
+    <button type="button" class="btn-3d btn-download" data-type="css">Download CSS</button>
+    <button type="button" class="btn-3d btn-download" data-type="js">Download JS</button>
+    <button type="button" class="btn-3d btn-download" data-type="all">Download All</button>
+    <button type="button" class="btn-3d btn-clear" id="clearBtn">Clear All</button>
+  </section>
 
-          <form id="extractForm" class="url-form" autocomplete="off">
-            <label class="url-label" for="urlInput">Website URL</label>
-            <div class="url-card card-3d preserve-3d glow-border" id="urlCard">
-              <div class="card-3d-content">
-                <input
-                  type="url"
-                  id="urlInput"
-                  name="url"
-                  class="url-input"
-                  placeholder="https://example.com"
-                  inputmode="url"
-                  autocomplete="url"
-                  aria-describedby="urlHelp"
-                  required
-                >
-              </div>
-            </div>
-            <button type="submit" class="btn-3d btn-extract" id="extractBtn">
-              <span class="btn-3d-face btn-3d-front">
-                <span class="btn-label">Extract</span>
-                <span class="btn-spinner" aria-hidden="true"></span>
-              </span>
-              <span class="btn-3d-face btn-3d-depth" aria-hidden="true"></span>
-            </button>
-          </form>
-          <p id="urlHelp" class="url-help">Starts with http:// or https:// · Ctrl+Enter also works</p>
+  <section class="results-section hidden" id="resultsSection">
+    <nav class="tab-nav" role="tablist" aria-label="Source panels">
+      <button type="button" class="tab-btn active" role="tab" data-tab="html" aria-selected="true">HTML</button>
+      <button type="button" class="tab-btn" role="tab" data-tab="css" aria-selected="false">CSS</button>
+      <button type="button" class="tab-btn" role="tab" data-tab="js" aria-selected="false">JS</button>
+      <button type="button" class="tab-btn" role="tab" data-tab="resources" aria-selected="false">Resources</button>
+      <button type="button" class="tab-btn" role="tab" data-tab="preview" aria-selected="false">Preview</button>
+    </nav>
 
-          <div class="stats-bar" id="statsBar" hidden>
-            <span id="statStyles">0 style blocks</span>
-            <span id="statScripts">0 script blocks</span>
-            <span id="statResources">0 external resources</span>
-          </div>
-
-          <div class="action-bar" id="actionBar" hidden>
-            <button type="button" class="btn-chip" id="dlHtml" disabled>Download HTML</button>
-            <button type="button" class="btn-chip" id="dlCss" disabled>Download CSS</button>
-            <button type="button" class="btn-chip" id="dlJs" disabled>Download JS</button>
-            <button type="button" class="btn-3d btn-3d-sm" id="dlAll" disabled>
-              <span class="btn-3d-face btn-3d-front">Download All</span>
-              <span class="btn-3d-face btn-3d-depth" aria-hidden="true"></span>
-            </button>
-            <button type="button" class="btn-chip btn-chip-outline" id="clearAll" disabled>Clear All</button>
-          </div>
+    <div class="tab-panels">
+      <div class="tab-panel active card-3d" id="panel-html" role="tabpanel">
+        <div class="panel-header">
+          <span class="file-name" id="htmlFileName">source.html</span>
+          <span class="file-size" id="htmlFileSize">0 KB</span>
+          <button type="button" class="btn-copy" data-copy="html">Copy</button>
         </div>
-      </section>
-
-      <!-- Results -->
-      <section class="section section-alt" id="results">
-        <div class="section-inner">
-          <div class="empty-state" id="emptyState">
-            <div class="empty-icon" aria-hidden="true"></div>
-            <p>Nothing extracted yet — drop a URL above to get started.</p>
-          </div>
-
-          <div class="results-panel" id="resultsPanel" hidden>
-            <div class="tabs" role="tablist" aria-label="Source panels">
-              <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="html" id="tab-html">HTML</button>
-              <button type="button" class="tab" role="tab" aria-selected="false" data-tab="css" id="tab-css">CSS</button>
-              <button type="button" class="tab" role="tab" aria-selected="false" data-tab="js" id="tab-js">JS</button>
-              <button type="button" class="tab" role="tab" aria-selected="false" data-tab="resources" id="tab-resources">Resources</button>
-              <button type="button" class="tab" role="tab" aria-selected="false" data-tab="preview" id="tab-preview">Preview</button>
-            </div>
-
-            <div class="panels">
-              <div class="panel active card-3d preserve-3d" id="panel-html" role="tabpanel" aria-labelledby="tab-html">
-                <div class="card-3d-content">
-                  <div class="code-window">
-                    <div class="code-header">
-                      <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-                      <span class="code-title">index.html <span class="code-size" id="size-html"></span></span>
-                      <button type="button" class="btn-copy" data-copy="html">Copy</button>
-                    </div>
-                    <pre class="code-block"><code id="code-html"></code></pre>
-                  </div>
-                </div>
-              </div>
-
-              <div class="panel card-3d preserve-3d" id="panel-css" role="tabpanel" aria-labelledby="tab-css" hidden>
-                <div class="card-3d-content">
-                  <div class="code-window">
-                    <div class="code-header">
-                      <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-                      <span class="code-title">styles <span class="code-size" id="size-css"></span></span>
-                      <button type="button" class="btn-copy" data-copy="css">Copy</button>
-                    </div>
-                    <pre class="code-block"><code id="code-css"></code></pre>
-                  </div>
-                </div>
-              </div>
-
-              <div class="panel card-3d preserve-3d" id="panel-js" role="tabpanel" aria-labelledby="tab-js" hidden>
-                <div class="card-3d-content">
-                  <div class="code-window">
-                    <div class="code-header">
-                      <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-                      <span class="code-title">scripts <span class="code-size" id="size-js"></span></span>
-                      <button type="button" class="btn-copy" data-copy="js">Copy</button>
-                    </div>
-                    <pre class="code-block"><code id="code-js"></code></pre>
-                  </div>
-                </div>
-              </div>
-
-              <div class="panel card-3d preserve-3d" id="panel-resources" role="tabpanel" aria-labelledby="tab-resources" hidden>
-                <div class="card-3d-content">
-                  <div class="code-window">
-                    <div class="code-header">
-                      <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-                      <span class="code-title">resources</span>
-                    </div>
-                    <ul class="file-tree" id="fileTree"></ul>
-                  </div>
-                </div>
-              </div>
-
-              <div class="panel card-3d preserve-3d" id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" hidden>
-                <div class="card-3d-content">
-                  <div class="preview-window">
-                    <div class="code-header">
-                      <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-                      <span class="code-title">live preview</span>
-                    </div>
-                    <div class="preview-frame-wrap">
-                      <div class="preview-spinner" id="previewSpinner" aria-hidden="true"></div>
-                      <iframe id="previewFrame" class="preview-frame" title="Live preview of extracted source" sandbox="allow-same-origin allow-scripts"></iframe>
-                      <p class="preview-error" id="previewError" hidden>Preview couldn't render. The extracted HTML may rely on resources that don't load in a sandboxed frame.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="footer">
-      <div class="section-inner footer-inner">
-        <div class="brand">
-          <span class="brand-mark-static" aria-hidden="true"></span>
-          <span class="brand-name">Source <strong>W</strong></span>
-        </div>
-        <p class="footer-note">Runs in your browser. Nothing you extract is uploaded.</p>
-        <div class="footer-links">
-          <a href="#top">Back to top</a>
+        <div class="code-wrapper">
+          <div class="line-numbers" id="htmlLineNumbers" aria-hidden="true">1</div>
+          <pre class="code-block"><code id="htmlCode" class="language-html"></code></pre>
         </div>
       </div>
-    </footer>
+
+      <div class="tab-panel card-3d" id="panel-css" role="tabpanel" hidden>
+        <div class="panel-header">
+          <span class="file-name" id="cssFileName">styles.css</span>
+          <span class="file-size" id="cssFileSize">0 KB</span>
+          <button type="button" class="btn-copy" data-copy="css">Copy</button>
+        </div>
+        <div class="code-wrapper">
+          <div class="line-numbers" id="cssLineNumbers" aria-hidden="true">1</div>
+          <pre class="code-block"><code id="cssCode" class="language-css"></code></pre>
+        </div>
+      </div>
+
+      <div class="tab-panel card-3d" id="panel-js" role="tabpanel" hidden>
+        <div class="panel-header">
+          <span class="file-name" id="jsFileName">script.js</span>
+          <span class="file-size" id="jsFileSize">0 KB</span>
+          <button type="button" class="btn-copy" data-copy="js">Copy</button>
+        </div>
+        <div class="code-wrapper">
+          <div class="line-numbers" id="jsLineNumbers" aria-hidden="true">1</div>
+          <pre class="code-block"><code id="jsCode" class="language-js"></code></pre>
+        </div>
+      </div>
+
+      <div class="tab-panel card-3d" id="panel-resources" role="tabpanel" hidden>
+        <div class="panel-header">
+          <span class="file-name">External Resources</span>
+          <span class="file-size" id="resourceCount">0 found</span>
+        </div>
+        <ul class="resource-list" id="resourceList"></ul>
+      </div>
+
+      <div class="tab-panel card-3d" id="panel-preview" role="tabpanel" hidden>
+        <div class="panel-header">
+          <span class="file-name">Live Preview</span>
+          <span class="file-size">Sandboxed iframe</span>
+        </div>
+        <div class="preview-wrapper">
+          <div class="preview-loader" id="previewLoader">
+            <div class="spinner"></div>
+            <span>Rendering preview…</span>
+          </div>
+          <iframe id="previewFrame" title="Live preview" sandbox="allow-same-origin allow-scripts" loading="lazy"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="extract-overlay hidden" id="extractOverlay" aria-hidden="true">
+    <div class="scanner-line"></div>
+    <div class="data-streams" id="dataStreams">
+      <div class="stream"></div><div class="stream"></div><div class="stream"></div>
+      <div class="stream"></div><div class="stream"></div><div class="stream"></div>
+      <div class="stream"></div><div class="stream"></div><div class="stream"></div>
+      <div class="stream"></div>
+    </div>
+    <div class="extract-text" id="extractText">Extracting source code…</div>
   </div>
 
-  <!-- ========== EXTRACTION OVERLAY ========== -->
-  <div id="extractOverlay" class="extract-overlay" hidden aria-hidden="true">
-    <div class="scanner-line" id="scannerLine"></div>
-    <div class="data-streams" id="dataStreams" aria-hidden="true"></div>
-    <canvas id="burstCanvas" class="burst-canvas" aria-hidden="true"></canvas>
-    <p class="extract-status" id="extractStatus">Extracting…</p>
-  </div>
-
-  <!-- Toast -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
-  <script src="script.js"></script>
+</main>
+
+<script src="script.js"></script>
 </body>
 </html>
