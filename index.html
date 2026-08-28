@@ -1,69 +1,53 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Source W — Website Source Code Extractor</title>
-  <meta name="description" content="Extract, preview, and download any website's HTML, CSS, JavaScript and assets from a single URL.">
+  <meta name="description" content="Extract, preview, and download any website's HTML, CSS, JavaScript and assets.">
   <meta name="theme-color" content="#000000">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23000'/%3E%3Cpath d='M6 8 L10 24 L16 12 L22 24 L26 8' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E" type="image/svg+xml">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Source%20W%22,%22short_name%22:%22Source%20W%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23000000%22,%22theme_color%22:%22%23000000%22}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23000'/%3E%3Cpath d='M6 8 L10 24 L16 12 L22 24 L26 8' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<a class="skip-link" href="#mainApp">Skip to content</a>
+<div class="offline-banner hidden" id="offlineBanner" role="status">You are offline. Source W needs internet to extract.</div>
 
 <section id="landing" class="landing-overlay" aria-label="Welcome">
   <canvas id="particle-canvas" aria-hidden="true"></canvas>
-
   <div class="orb orb-1" aria-hidden="true"></div>
   <div class="orb orb-2" aria-hidden="true"></div>
   <div class="orb orb-3" aria-hidden="true"></div>
-
-  <div class="shape-3d shape-cube-1" aria-hidden="true">
-    <div class="cube-face f1"></div><div class="cube-face f2"></div><div class="cube-face f3"></div>
-    <div class="cube-face f4"></div><div class="cube-face f5"></div><div class="cube-face f6"></div>
-  </div>
-  <div class="shape-3d shape-cube-2" aria-hidden="true">
-    <div class="cube-face f1"></div><div class="cube-face f2"></div><div class="cube-face f3"></div>
-    <div class="cube-face f4"></div><div class="cube-face f5"></div><div class="cube-face f6"></div>
-  </div>
-  <div class="shape-3d shape-cube-3" aria-hidden="true">
-    <div class="cube-face f1"></div><div class="cube-face f2"></div><div class="cube-face f3"></div>
-    <div class="cube-face f4"></div><div class="cube-face f5"></div><div class="cube-face f6"></div>
-  </div>
-  <div class="shape-3d shape-pyramid" aria-hidden="true">
-    <div class="pyr-face p1"></div><div class="pyr-face p2"></div>
-    <div class="pyr-face p3"></div><div class="pyr-face p4"></div>
-  </div>
-
-  <div class="logo-3d-container">
-    <div class="logo-3d" aria-hidden="true">
-      <div class="w-face w-front-l"></div>
-      <div class="w-face w-front-ml"></div>
-      <div class="w-face w-front-mr"></div>
-      <div class="w-face w-front-r"></div>
-      <div class="w-face w-side-l"></div>
-      <div class="w-face w-side-r"></div>
-      <div class="w-face w-back-l"></div>
-      <div class="w-face w-back-ml"></div>
-      <div class="w-face w-back-mr"></div>
-      <div class="w-face w-back-r"></div>
-      <div class="w-face w-conn-l"></div>
-      <div class="w-face w-conn-r"></div>
+  <div class="shape-3d shape-cube-1" aria-hidden="true"><div class="cube-face f1"></div><div class="cube-face f2"></div><div class="cube-face f3"></div><div class="cube-face f4"></div><div class="cube-face f5"></div><div class="cube-face f6"></div></div>
+  <div class="shape-3d shape-cube-2" aria-hidden="true"><div class="cube-face f1"></div><div class="cube-face f2"></div><div class="cube-face f3"></div><div class="cube-face f4"></div><div class="cube-face f5"></div><div class="cube-face f6"></div></div>
+  <div class="shape-3d shape-pyramid" aria-hidden="true"><div class="pyr-face p1"></div><div class="pyr-face p2"></div><div class="pyr-face p3"></div><div class="pyr-face p4"></div></div>
+  <div class="logo-3d-container" id="logoContainer">
+    <div class="logo-orbit" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="logo-3d" id="logo3d" aria-hidden="true">
+      <div class="w-face w-f1"></div><div class="w-face w-f2"></div><div class="w-face w-f3"></div><div class="w-face w-f4"></div>
+      <div class="w-face w-m1"></div><div class="w-face w-m2"></div><div class="w-face w-m3"></div><div class="w-face w-m4"></div>
+      <div class="w-face w-b1"></div><div class="w-face w-b2"></div><div class="w-face w-b3"></div><div class="w-face w-b4"></div>
+      <div class="w-face w-s1"></div><div class="w-face w-s2"></div><div class="w-face w-s3"></div><div class="w-face w-s4"></div>
     </div>
-    <h1 class="logo-text">Source W</h1>
+    <h1 class="logo-text extrude">Source W</h1>
     <p class="tagline" id="tagline" aria-live="polite"></p>
-    <button type="button" class="btn-3d-enter" id="enterBtn">Enter</button>
-    <p class="landing-skip"><kbd>Esc</kbd> skip · auto in 5s</p>
+    <button type="button" class="btn-3d-enter" id="enterBtn" aria-label="Enter Source W">Enter</button>
+    <p class="landing-skip"><kbd>Esc</kbd> skip · auto 5s</p>
   </div>
 </section>
 
 <main id="mainApp" class="main-app hidden">
   <header class="app-header">
-    <div class="header-logo">
-      <div class="mini-logo" aria-hidden="true"><span></span></div>
-      <div>
-        <h2>Source W</h2>
-        <span>extract · preview · download</span>
+    <div class="header-inner">
+      <div class="header-logo">
+        <div class="mini-logo" aria-hidden="true"><span></span></div>
+        <div><h2>Source W</h2><span>extract · preview · download</span></div>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="icon-btn" id="compareBtn" aria-label="Compare two URLs" title="Compare">⇄</button>
+        <button type="button" class="icon-btn" id="themeBtn" aria-label="Toggle dark mode" title="Theme">🌙</button>
       </div>
     </div>
   </header>
@@ -71,17 +55,22 @@
   <section class="input-section">
     <div class="input-card card-3d" id="inputCard">
       <label for="urlInput">Website URL</label>
-      <div class="input-wrap">
-        <input type="url" id="urlInput" placeholder="https://example.com" autocomplete="off" inputmode="url">
-        <span class="input-focus-line" aria-hidden="true"></span>
+      <div class="input-row" id="dropZone">
+        <span class="url-prefix" id="urlPrefix" aria-hidden="true">https://</span>
+        <input type="url" id="urlInput" placeholder="example.com" autocomplete="off" inputmode="url" aria-describedby="urlStatus" aria-label="Website URL">
+        <span class="url-status" id="urlStatus" role="status"></span>
       </div>
-      <button type="button" class="btn-3d btn-extract" id="extractBtn">
+      <div class="drop-hint hidden" id="dropHint">Drop URL here</div>
+      <div class="history-dropdown hidden" id="historyDropdown" role="listbox" aria-label="Recent extracts"></div>
+      <button type="button" class="btn-3d btn-extract" id="extractBtn" aria-label="Extract source code">
         <span class="btn-text">Extract</span>
         <span class="btn-loader hidden" aria-hidden="true"><i></i><i></i><i></i></span>
       </button>
-      <p class="input-hint">Full URL with http:// or https:// · Ctrl+Enter to extract</p>
+      <p class="input-hint">Drag a link or paste URL · Ctrl+Enter to extract</p>
     </div>
   </section>
+
+  <section class="stats-bar hidden" id="statsBar" aria-label="Extraction stats"></section>
 
   <section class="action-bar hidden" id="actionBar">
     <div class="action-inner">
@@ -89,6 +78,7 @@
       <button type="button" class="btn-3d btn-download" data-type="css">Download CSS</button>
       <button type="button" class="btn-3d btn-download" data-type="js">Download JS</button>
       <button type="button" class="btn-3d btn-download" data-type="all">Download All</button>
+      <button type="button" class="btn-3d btn-download" data-type="single" aria-label="Download as single HTML file">📦 Single File</button>
       <button type="button" class="btn-3d btn-clear" id="clearBtn">Clear All</button>
     </div>
   </section>
@@ -96,7 +86,7 @@
   <section class="empty-state" id="emptyState">
     <div class="empty-icon" aria-hidden="true"></div>
     <p>Nothing extracted yet</p>
-    <span>Paste a URL above and press Extract</span>
+    <span>Paste a URL and press Extract</span>
   </section>
 
   <section class="results-section hidden" id="resultsSection">
@@ -107,81 +97,90 @@
       <button type="button" class="tab-btn" role="tab" data-tab="resources" aria-selected="false">Resources</button>
       <button type="button" class="tab-btn" role="tab" data-tab="preview" aria-selected="false">Preview</button>
     </nav>
-
     <div class="tab-panels">
-      <div class="tab-panel active card-3d" id="panel-html" role="tabpanel">
+      <div class="tab-panel active card-3d" id="panel-html" role="tabpanel" data-lazy="html">
         <div class="panel-header">
-          <div class="panel-meta">
-            <span class="file-name">source.html</span>
-            <span class="file-size" id="htmlFileSize">0 B</span>
-            <span class="file-lines" id="htmlLines">0 lines</span>
+          <div class="panel-meta"><span class="file-name">source.html</span><span class="file-size" id="htmlFileSize">0 B</span><span class="file-lines" id="htmlLines">0 lines</span></div>
+          <div class="panel-tools">
+            <input type="search" class="code-search" data-panel="html" placeholder="Find…" aria-label="Search HTML" autocomplete="off">
+            <span class="match-count" id="htmlMatch" aria-live="polite"></span>
+            <button type="button" class="tool-btn" data-beautify="html" aria-label="Beautify or minify HTML">{} Beautify</button>
+            <button type="button" class="tool-btn" data-fullscreen="html" aria-label="Fullscreen HTML">⛶</button>
+            <button type="button" class="btn-copy" data-copy="html">Copy</button>
           </div>
-          <button type="button" class="btn-copy" data-copy="html">Copy</button>
         </div>
-        <div class="code-wrapper">
-          <div class="line-numbers" id="htmlLineNumbers" aria-hidden="true">1</div>
-          <pre class="code-block"><code id="htmlCode"></code></pre>
-        </div>
+        <div class="code-wrapper"><div class="line-numbers" id="htmlLineNumbers" aria-hidden="true">1</div><pre class="code-block"><code id="htmlCode"></code></pre></div>
       </div>
-
-      <div class="tab-panel card-3d" id="panel-css" role="tabpanel" hidden>
+      <div class="tab-panel card-3d" id="panel-css" role="tabpanel" hidden data-lazy="css">
         <div class="panel-header">
-          <div class="panel-meta">
-            <span class="file-name">styles.css</span>
-            <span class="file-size" id="cssFileSize">0 B</span>
-            <span class="file-lines" id="cssLines">0 lines</span>
+          <div class="panel-meta"><span class="file-name">styles.css</span><span class="file-size" id="cssFileSize">0 B</span><span class="file-lines" id="cssLines">0 lines</span></div>
+          <div class="panel-tools">
+            <input type="search" class="code-search" data-panel="css" placeholder="Find…" aria-label="Search CSS" autocomplete="off">
+            <span class="match-count" id="cssMatch" aria-live="polite"></span>
+            <button type="button" class="tool-btn" data-beautify="css" aria-label="Beautify or minify CSS">{} Beautify</button>
+            <button type="button" class="tool-btn" data-fullscreen="css" aria-label="Fullscreen CSS">⛶</button>
+            <button type="button" class="btn-copy" data-copy="css">Copy</button>
           </div>
-          <button type="button" class="btn-copy" data-copy="css">Copy</button>
         </div>
-        <div class="code-wrapper">
-          <div class="line-numbers" id="cssLineNumbers" aria-hidden="true">1</div>
-          <pre class="code-block"><code id="cssCode"></code></pre>
-        </div>
+        <div class="code-wrapper"><div class="line-numbers" id="cssLineNumbers" aria-hidden="true">1</div><pre class="code-block"><code id="cssCode"></code></pre></div>
       </div>
-
-      <div class="tab-panel card-3d" id="panel-js" role="tabpanel" hidden>
+      <div class="tab-panel card-3d" id="panel-js" role="tabpanel" hidden data-lazy="js">
         <div class="panel-header">
-          <div class="panel-meta">
-            <span class="file-name">script.js</span>
-            <span class="file-size" id="jsFileSize">0 B</span>
-            <span class="file-lines" id="jsLines">0 lines</span>
+          <div class="panel-meta"><span class="file-name">script.js</span><span class="file-size" id="jsFileSize">0 B</span><span class="file-lines" id="jsLines">0 lines</span></div>
+          <div class="panel-tools">
+            <input type="search" class="code-search" data-panel="js" placeholder="Find…" aria-label="Search JS" autocomplete="off">
+            <span class="match-count" id="jsMatch" aria-live="polite"></span>
+            <button type="button" class="tool-btn" data-beautify="js" aria-label="Beautify or minify JS">{} Beautify</button>
+            <button type="button" class="tool-btn" data-fullscreen="js" aria-label="Fullscreen JS">⛶</button>
+            <button type="button" class="btn-copy" data-copy="js">Copy</button>
           </div>
-          <button type="button" class="btn-copy" data-copy="js">Copy</button>
         </div>
-        <div class="code-wrapper">
-          <div class="line-numbers" id="jsLineNumbers" aria-hidden="true">1</div>
-          <pre class="code-block"><code id="jsCode"></code></pre>
-        </div>
+        <div class="code-wrapper"><div class="line-numbers" id="jsLineNumbers" aria-hidden="true">1</div><pre class="code-block"><code id="jsCode"></code></pre></div>
       </div>
-
       <div class="tab-panel card-3d" id="panel-resources" role="tabpanel" hidden>
-        <div class="panel-header">
-          <div class="panel-meta">
-            <span class="file-name">External Resources</span>
-            <span class="file-size" id="resourceCount">0 found</span>
-          </div>
-        </div>
-        <ul class="resource-list" id="resourceList"></ul>
+        <div class="panel-header"><div class="panel-meta"><span class="file-name">External Resources</span><span class="file-size" id="resourceCount">0 found</span></div></div>
+        <div class="resource-groups" id="resourceList"></div>
       </div>
-
       <div class="tab-panel card-3d" id="panel-preview" role="tabpanel" hidden>
         <div class="panel-header">
-          <div class="panel-meta">
-            <span class="file-name">Live Preview</span>
-            <span class="file-size">Sandboxed</span>
-          </div>
+          <div class="panel-meta"><span class="file-name">Live Preview</span><span class="security-badge" title="Scripts and dangerous tags removed">🔒 Sandboxed</span></div>
         </div>
         <div class="preview-wrapper">
-          <div class="preview-loader" id="previewLoader">
-            <div class="spinner-3d" aria-hidden="true"><span></span><span></span><span></span></div>
-            <span>Rendering preview…</span>
-          </div>
-          <p class="preview-error hidden" id="previewError">Preview could not render. The page may depend on blocked resources.</p>
-          <iframe id="previewFrame" title="Live preview" sandbox="allow-same-origin allow-scripts" loading="lazy"></iframe>
+          <div class="preview-loader" id="previewLoader"><div class="spinner-3d" aria-hidden="true"><span></span><span></span><span></span></div><span>Rendering…</span></div>
+          <p class="preview-error hidden" id="previewError">Preview could not render.</p>
+          <iframe id="previewFrame" title="Sandboxed live preview" sandbox="allow-same-origin" loading="lazy"></iframe>
         </div>
       </div>
     </div>
   </section>
+
+  <!-- Compare mode -->
+  <section class="compare-mode hidden" id="compareMode" aria-label="Compare mode">
+    <div class="compare-header">
+      <h3>Compare</h3>
+      <button type="button" class="icon-btn" id="compareClose" aria-label="Close compare">✕</button>
+    </div>
+    <div class="compare-inputs">
+      <input type="url" id="compareA" placeholder="URL A https://…" aria-label="URL A">
+      <input type="url" id="compareB" placeholder="URL B https://…" aria-label="URL B">
+      <button type="button" class="btn-3d" id="compareRun">Compare</button>
+    </div>
+    <div class="compare-tabs">
+      <button type="button" class="tab-btn active" data-ctab="html">HTML</button>
+      <button type="button" class="tab-btn" data-ctab="css">CSS</button>
+      <button type="button" class="tab-btn" data-ctab="js">JS</button>
+    </div>
+    <div class="compare-split">
+      <pre class="diff-pane" id="diffLeft"></pre>
+      <pre class="diff-pane" id="diffRight"></pre>
+    </div>
+  </section>
+
+  <!-- Fullscreen overlay -->
+  <div class="fs-overlay hidden" id="fsOverlay" role="dialog" aria-modal="true" aria-label="Fullscreen code">
+    <button type="button" class="fs-close" id="fsClose" aria-label="Exit fullscreen">✕</button>
+    <div class="fs-body"><div class="line-numbers" id="fsLines" aria-hidden="true"></div><pre><code id="fsCode"></code></pre></div>
+  </div>
 
   <div class="extract-overlay hidden" id="extractOverlay" aria-hidden="true">
     <div class="scanner-beam"></div>
@@ -190,12 +189,21 @@
     <div class="extract-status">
       <div class="status-ring" aria-hidden="true"></div>
       <span id="statusText">Connecting…</span>
+      <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-pct" id="progressPct">0%</span>
     </div>
   </div>
 
-  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
-</main>
+  <div class="install-banner hidden" id="installBanner" role="dialog" aria-label="Install Source W">
+    <div class="install-icon" aria-hidden="true">W</div>
+    <div class="install-text"><strong>Install Source W</strong><span>Quick access from your home screen</span></div>
+    <button type="button" class="btn-3d" id="installBtn">Install</button>
+    <button type="button" class="icon-btn" id="installDismiss" aria-label="Dismiss">✕</button>
+  </div>
 
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+  <div class="sr-live" id="srLive" aria-live="assertive" aria-atomic="true"></div>
+</main>
 <script src="script.js"></script>
 </body>
 </html>
