@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Source W — Extract Any Website's Source Code</title>
+<meta name="description" content="Source W extracts the complete HTML, CSS and JavaScript source of any website from a single URL.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ 3D LANDING OVERLAY ============ -->
+<section id="landing" class="landing" aria-label="Intro">
+  <canvas id="particle-canvas" class="particle-canvas" aria-hidden="true"></canvas>
+
+  <div class="landing-shapes" aria-hidden="true">
+    <div class="shape shape-cube shape-1"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="shape shape-pyramid shape-2"><span></span><span></span><span></span><span></span></div>
+    <div class="shape shape-cube shape-3"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="shape shape-pyramid shape-4"><span></span><span></span><span></span><span></span></div>
+  </div>
+
+  <div class="landing-content">
+    <div class="logo-3d" id="logo3d" aria-hidden="true">
+      <div class="logo-w">
+        <div class="w-stroke w-stroke-1"></div>
+        <div class="w-stroke w-stroke-2"></div>
+        <div class="w-stroke w-stroke-3"></div>
+        <div class="w-stroke w-stroke-4"></div>
+      </div>
+    </div>
+    <h1 class="landing-title">Source <span>W</span></h1>
+    <p class="landing-tagline" id="tagline">Every line of code, laid bare.</p>
+    <button class="btn-3d btn-3d-primary btn-enter" id="enterBtn" type="button">
+      Enter
+    </button>
+  </div>
+
+  <p class="landing-hint" aria-hidden="true">press enter or click to continue</p>
+</section>
+
+<!-- ============ MAIN APP ============ -->
+<div id="app" class="app" aria-hidden="true">
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <div class="w-stroke w-stroke-1"></div>
+          <div class="w-stroke w-stroke-2"></div>
+          <div class="w-stroke w-stroke-3"></div>
+          <div class="w-stroke w-stroke-4"></div>
+        </div>
+        <span class="brand-name">Source <strong>W</strong></span>
+      </div>
+      <p class="brand-tagline">extract &middot; preview &middot; download</p>
+    </div>
+  </header>
+
+  <main class="container main-content">
+
+    <!-- URL Input -->
+    <section class="input-card card-3d" aria-label="Extract source code">
+      <form id="extractForm" class="input-form" autocomplete="off">
+        <label for="urlInput" class="input-label">Website URL</label>
+        <div class="input-row">
+          <input
+            type="text"
+            id="urlInput"
+            name="url"
+            class="url-input"
+            placeholder="https://example.com"
+            aria-describedby="urlHelp"
+            required
+          >
+          <button type="submit" class="btn-3d btn-3d-primary btn-extract" id="extractBtn">
+            <span class="btn-label">Extract</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+        <p id="urlHelp" class="input-help">Paste a full URL starting with http:// or https:// &mdash; then press Extract or Ctrl+Enter.</p>
+      </form>
+    </section>
+
+    <!-- Action Bar -->
+    <section class="action-bar" id="actionBar" aria-label="Download actions">
+      <button class="btn-3d btn-3d-download" id="dlHtml" disabled>Download HTML</button>
+      <button class="btn-3d btn-3d-download" id="dlCss" disabled>Download CSS</button>
+      <button class="btn-3d btn-3d-download" id="dlJs" disabled>Download JS</button>
+      <button class="btn-3d btn-3d-primary btn-3d-all" id="dlAll" disabled>Download All</button>
+      <button class="btn-3d btn-3d-outline" id="clearAll" disabled>Clear All</button>
+    </section>
+
+    <!-- Empty State -->
+    <section class="empty-state" id="emptyState">
+      <div class="empty-icon" aria-hidden="true">
+        <div class="w-stroke w-stroke-1"></div>
+        <div class="w-stroke w-stroke-2"></div>
+        <div class="w-stroke w-stroke-3"></div>
+        <div class="w-stroke w-stroke-4"></div>
+      </div>
+      <p>Enter a URL above to extract source code</p>
+    </section>
+
+    <!-- Extraction Scanner Overlay -->
+    <div class="scanner-overlay" id="scannerOverlay" aria-hidden="true">
+      <div class="scanner-beam"></div>
+      <p class="scanner-text">Scanning source&hellip;</p>
+    </div>
+
+    <!-- Results -->
+    <section class="results" id="results" hidden>
+
+      <div class="tabs" role="tablist" aria-label="Source panels">
+        <button class="tab active" role="tab" aria-selected="true" data-tab="html" id="tab-html">HTML</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="css" id="tab-css">CSS</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="js" id="tab-js">JS</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="resources" id="tab-resources">Resources</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="preview" id="tab-preview">Preview</button>
+      </div>
+
+      <div class="panels">
+
+        <div class="panel active" id="panel-html" role="tabpanel" aria-labelledby="tab-html">
+          <div class="panel-card card-3d">
+            <div class="panel-header">
+              <span class="panel-title">index.html</span>
+              <button class="btn-copy" data-copy="html">Copy</button>
+            </div>
+            <pre class="code-block"><code id="code-html"></code></pre>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-css" role="tabpanel" aria-labelledby="tab-css" hidden>
+          <div class="panel-card card-3d">
+            <div class="panel-header">
+              <span class="panel-title">style.css</span>
+              <button class="btn-copy" data-copy="css">Copy</button>
+            </div>
+            <pre class="code-block"><code id="code-css"></code></pre>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-js" role="tabpanel" aria-labelledby="tab-js" hidden>
+          <div class="panel-card card-3d">
+            <div class="panel-header">
+              <span class="panel-title">script.js</span>
+              <button class="btn-copy" data-copy="js">Copy</button>
+            </div>
+            <pre class="code-block"><code id="code-js"></code></pre>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-resources" role="tabpanel" aria-labelledby="tab-resources" hidden>
+          <div class="panel-card card-3d">
+            <div class="panel-header">
+              <span class="panel-title">External resources</span>
+            </div>
+            <ul class="resource-list" id="resourceList"></ul>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" hidden>
+          <div class="panel-card card-3d preview-card">
+            <div class="panel-header">
+              <span class="panel-title">Live preview</span>
+            </div>
+            <div class="preview-frame-wrap">
+              <div class="preview-spinner" id="previewSpinner" aria-hidden="true"></div>
+              <iframe id="previewFrame" class="preview-frame" title="Live preview of extracted source" sandbox="allow-same-origin allow-scripts"></iframe>
+              <p class="preview-error" id="previewError" hidden>Preview couldn't render. The extracted HTML may rely on resources that don't load in a sandboxed frame.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Source W &mdash; runs entirely in your browser. Nothing is uploaded anywhere.</p>
+    </div>
+  </footer>
+
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
