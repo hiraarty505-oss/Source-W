@@ -6,272 +6,185 @@
   "use strict";
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let state = null; // { html, css, js, tree, url }
+
+  const state = {
+    url: "",
+    html: "",
+    css: "",
+    js: "",
+    resources: [],
+    hasData: false,
+    counts: { styles: 0, scripts: 0, resources: 0 },
+  };
 
   /* =======================================================================
-     NAV — hamburger + smooth scroll CTAs
+     LANDING — particles, typewriter, enter
      ======================================================================= */
 
-  const nav = document.getElementById("nav");
-  const hamburger = document.getElementById("hamburger");
-  const navLinks = document.getElementById("navLinks");
+  const landing = document.getElementById("landing");
+  const mainApp = document.getElementById("mainApp");
+  const particleCanvas = document.getElementById("particle-canvas");
+  const taglineEl = document.getElementById("tagline");
+  const enterBtn = document.getElementById("enterBtn");
 
-  hamburger.addEventListener("click", () => {
-    const isOpen = nav.classList.toggle("menu-open");
-    hamburger.classList.toggle("open", isOpen);
-    hamburger.setAttribute("aria-expanded", String(isOpen));
-  });
-  navLinks.querySelectorAll("a").forEach((a) =>
-    a.addEventListener("click", () => {
-      nav.classList.remove("menu-open");
-      hamburger.classList.remove("open");
-      hamburger.setAttribute("aria-expanded", "false");
-    })
-  );
+  let particles = [];
+  let mouse = { x: -9999, y: -9999 };
+  let particleAnimId = null;
+  let particleCtx = null;
 
-  function scrollToExtract() {
-    document.getElementById("extract").scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
-    setTimeout(() => document.getElementById("urlInput").focus(), reducedMotion ? 0 : 500);
-  }
-  document.getElementById("navExtractBtn").addEventListener("click", scrollToExtract);
-  document.getElementById("heroExtractBtn").addEventListener("click", scrollToExtract);
-  document.getElementById("scrollCue").addEventListener("click", scrollToExtract);
-
-  /* =======================================================================
-     THREE.JS — HERO SCENE
-     ======================================================================= */
-
-  const heroCanvas = document.getElementById("hero-canvas");
-  let heroRenderer, heroScene, heroCamera, heroShapes = [], heroParticles;
-  let mouseX = 0, mouseY = 0;
-
-  function initHeroScene() {
-    heroRenderer = new THREE.WebGLRenderer({ canvas: heroCanvas, antialias: true, alpha: true });
-    heroRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    heroRenderer.setSize(window.innerWidth, window.innerHeight);
-
-    heroScene = new THREE.Scene();
-    heroCamera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
-    heroCamera.position.z = 9;
-
-    const colors = [0x8b5cf6, 0x6366f1, 0x22d3ee];
-    const geos = [
-      new THREE.IcosahedronGeometry(1, 0),
-      new THREE.OctahedronGeometry(0.9, 0),
-      new THREE.TorusGeometry(0.7, 0.24, 8, 24),
-      new THREE.TetrahedronGeometry(1, 0),
-      new THREE.IcosahedronGeometry(0.6, 0),
-    ];
-
-    for (let i = 0; i < geos.length; i++) {
-      const material = new THREE.MeshBasicMaterial({
-        color: colors[i % colors.length],
-        wireframe: true,
-        transparent: true,
-        opacity: 0.55,
+  function initParticles() {
+    if (!particleCanvas || reducedMotion) return;
+    particleCtx = particleCanvas.getContext("2d");
+    resizeParticles();
+    const count = Math.min(150, Math.floor((window.innerWidth * window.innerHeight) / 9000));
+    particles = [];
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * particleCanvas.width,
+        y: Math.random() * particleCanvas.height,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        r: Math.random() * 1.6 + 0.4,
+        o: Math.random() * 0.5 + 0.25,
       });
-      const mesh = new THREE.Mesh(geos[i], material);
-      const angle = (i / geos.length) * Math.PI * 2;
-      const radius = 3.6;
-      mesh.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius * 0.5, (Math.random() - 0.5) * 3);
-      mesh.userData.spin = { x: (Math.random() - 0.5) * 0.004, y: (Math.random() - 0.5) * 0.006 };
-      mesh.userData.floatOffset = Math.random() * Math.PI * 2;
-      heroScene.add(mesh);
-      heroShapes.push(mesh);
+    }
+    window.addEventListener("mousemove", onParticleMouse);
+    window.addEventListener("resize", resizeParticles);
+    animateParticles();
+  }
+
+  function resizeParticles() {
+    particleCanvas.width = window.innerWidth;
+    particleCanvas.height = window.innerHeight;
+  }
+
+  function onParticleMouse(e) {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  }
+
+  function animateParticles() {
+    particleAnimId = requestAnimationFrame(animateParticles);
+    const ctx = particleCtx;
+    const w = particleCanvas.width;
+    const h = particleCanvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0 || p.x > w) p.vx *= -1;
+      if (p.y < 0 || p.y > h) p.vy *= -1;
+
+      const dx = p.x - mouse.x;
+      const dy = p.y - mouse.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 150 && dist > 0) {
+        const force = (150 - dist) / 150;
+        p.vx += (dx / dist) * force * 0.35;
+        p.vy += (dy / dist) * force * 0.35;
+      }
+      p.vx *= 0.99;
+      p.vy *= 0.99;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${p.o})`;
+      ctx.fill();
     }
 
-    // particle field
-    const particleCount = window.innerWidth < 640 ? 250 : 600;
-    const positions = new Float32Array(particleCount * 3);
-    for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 20;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 12;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 14;
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const a = particles[i];
+        const b = particles[j];
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 100) {
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = `rgba(255,255,255,${0.12 * (1 - d / 100)})`;
+          ctx.lineWidth = 0.6;
+          ctx.stroke();
+        }
+      }
     }
-    const particleGeo = new THREE.BufferGeometry();
-    particleGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    const particleMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true, opacity: 0.5 });
-    heroParticles = new THREE.Points(particleGeo, particleMat);
-    heroScene.add(heroParticles);
-
-    window.addEventListener("mousemove", (e) => {
-      mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-      mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
-    });
-
-    window.addEventListener("resize", onHeroResize);
-    animateHero();
   }
 
-  function onHeroResize() {
-    heroCamera.aspect = window.innerWidth / window.innerHeight;
-    heroCamera.updateProjectionMatrix();
-    heroRenderer.setSize(window.innerWidth, window.innerHeight);
-  }
-
-  const clock = new THREE.Clock();
-  function animateHero() {
-    requestAnimationFrame(animateHero);
-    const t = clock.getElapsedTime();
-
-    heroShapes.forEach((mesh) => {
-      mesh.rotation.x += mesh.userData.spin.x;
-      mesh.rotation.y += mesh.userData.spin.y;
-      mesh.position.y += Math.sin(t * 0.6 + mesh.userData.floatOffset) * 0.0015;
-    });
-
-    heroParticles.rotation.y = t * 0.02;
-
-    // parallax: camera eases toward mouse position
-    heroCamera.position.x += (mouseX * 1.2 - heroCamera.position.x) * 0.03;
-    heroCamera.position.y += (-mouseY * 0.8 - heroCamera.position.y) * 0.03;
-    heroCamera.lookAt(0, 0, 0);
-
-    heroRenderer.render(heroScene, heroCamera);
-  }
-
-  if (window.THREE) initHeroScene();
-
-  /* =======================================================================
-     THREE.JS — MODAL 3D PREVIEW (drag to rotate)
-     ======================================================================= */
-
-  const modal = document.getElementById("previewModal");
-  const modalCanvas = document.getElementById("modal-canvas");
-  const modalClose = document.getElementById("modalClose");
-  const modalBackdrop = document.getElementById("modalBackdrop");
-  let modalRenderer, modalScene, modalCamera, modalGroup, modalAnimId;
-  let isDragging = false, lastX = 0, lastY = 0;
-
-  function initModalScene() {
-    if (modalRenderer) return; // already built
-
-    modalRenderer = new THREE.WebGLRenderer({ canvas: modalCanvas, antialias: true, alpha: true });
-    modalRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    modalScene = new THREE.Scene();
-    modalCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-    modalCamera.position.z = 5;
-
-    modalGroup = new THREE.Group();
-    const colors = [0x8b5cf6, 0x6366f1, 0x22d3ee];
-    const geos = [
-      new THREE.TorusKnotGeometry(0.9, 0.28, 100, 16),
-      new THREE.IcosahedronGeometry(1.7, 0),
-    ];
-    geos.forEach((geo, i) => {
-      const mat = new THREE.MeshBasicMaterial({ color: colors[i], wireframe: true, transparent: true, opacity: 0.6 });
-      const mesh = new THREE.Mesh(geo, mat);
-      modalGroup.add(mesh);
-    });
-    modalScene.add(modalGroup);
-
-    resizeModalCanvas();
-
-    const startDrag = (x, y) => { isDragging = true; lastX = x; lastY = y; };
-    const moveDrag = (x, y) => {
-      if (!isDragging) return;
-      modalGroup.rotation.y += (x - lastX) * 0.008;
-      modalGroup.rotation.x += (y - lastY) * 0.008;
-      lastX = x; lastY = y;
+  function typewriterEffect() {
+    const text = "Extract · Preview · Download";
+    let i = 0;
+    taglineEl.innerHTML = '<span class="cursor"></span>';
+    if (reducedMotion) {
+      taglineEl.textContent = text;
+      return;
+    }
+    const tick = () => {
+      if (i <= text.length) {
+        taglineEl.innerHTML = text.slice(0, i) + '<span class="cursor"></span>';
+        i++;
+        setTimeout(tick, 50);
+      } else {
+        taglineEl.textContent = text;
+      }
     };
-    const endDrag = () => { isDragging = false; };
-
-    modalCanvas.addEventListener("mousedown", (e) => startDrag(e.clientX, e.clientY));
-    window.addEventListener("mousemove", (e) => moveDrag(e.clientX, e.clientY));
-    window.addEventListener("mouseup", endDrag);
-    modalCanvas.addEventListener("touchstart", (e) => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); }, { passive: true });
-    modalCanvas.addEventListener("touchmove", (e) => { const t = e.touches[0]; moveDrag(t.clientX, t.clientY); }, { passive: true });
-    modalCanvas.addEventListener("touchend", endDrag);
-
-    animateModal();
+    setTimeout(tick, 400);
   }
 
-  function resizeModalCanvas() {
-    const rect = modalCanvas.parentElement.getBoundingClientRect();
-    modalCamera.aspect = rect.width / rect.height;
-    modalCamera.updateProjectionMatrix();
-    modalRenderer.setSize(rect.width, rect.height);
+  function enterApp() {
+    if (landing.classList.contains("landing-exit")) return;
+    landing.classList.add("landing-exit");
+    setTimeout(() => {
+      landing.hidden = true;
+      landing.setAttribute("aria-hidden", "true");
+      if (particleAnimId) cancelAnimationFrame(particleAnimId);
+      mainApp.hidden = false;
+      mainApp.removeAttribute("hidden");
+      requestAnimationFrame(() => {
+        mainApp.classList.add("main-app-enter");
+      });
+      const input = document.getElementById("urlInput");
+      if (input) setTimeout(() => input.focus(), 400);
+    }, reducedMotion ? 0 : 750);
   }
 
-  function animateModal() {
-    modalAnimId = requestAnimationFrame(animateModal);
-    if (!isDragging && !reducedMotion) {
-      modalGroup.rotation.y += 0.003;
+  enterBtn.addEventListener("click", enterApp);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !landing.hidden) {
+      e.preventDefault();
+      enterApp();
     }
-    modalRenderer.render(modalScene, modalCamera);
-  }
+  });
 
-  function openModal() {
-    modal.classList.add("open");
-    modal.setAttribute("aria-hidden", "false");
-    if (window.THREE) {
-      initModalScene();
-      requestAnimationFrame(resizeModalCanvas);
-    }
-  }
-  function closeModal() {
-    modal.classList.remove("open");
-    modal.setAttribute("aria-hidden", "true");
-  }
-  document.getElementById("preview3dBtn").addEventListener("click", openModal);
-  modalClose.addEventListener("click", closeModal);
-  modalBackdrop.addEventListener("click", closeModal);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
-  window.addEventListener("resize", () => { if (modalRenderer) resizeModalCanvas(); });
+  initParticles();
+  typewriterEffect();
 
   /* =======================================================================
-     GSAP SCROLL REVEALS (falls back to IntersectionObserver)
+     3D CARD TILT
      ======================================================================= */
 
-  const revealEls = document.querySelectorAll(".reveal");
-  if (window.gsap && window.ScrollTrigger) {
-    gsap.registerPlugin(ScrollTrigger);
-    revealEls.forEach((el) => {
-      gsap.to(el, {
-        opacity: 1,
-        y: 0,
-        duration: 0.7,
-        ease: "power2.out",
-        scrollTrigger: { trigger: el, start: "top 88%" },
+  function setupCardTilt() {
+    document.querySelectorAll(".card-3d").forEach((card) => {
+      card.addEventListener("mousemove", (e) => {
+        if (reducedMotion) return;
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const rotY = Math.max(-15, Math.min(15, (x - cx) / 20));
+        const rotX = Math.max(-15, Math.min(15, (cy - y) / 20));
+        card.style.transform = `perspective(1000px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+      });
+      card.addEventListener("mouseleave", () => {
+        card.style.transition = "transform 0.5s var(--ease)";
+        card.style.transform = "perspective(1000px) rotateX(0) rotateY(0)";
+        setTimeout(() => { card.style.transition = ""; }, 500);
       });
     });
-  } else {
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("in-view");
-            io.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.15 }
-    );
-    revealEls.forEach((el) => io.observe(el));
   }
-
-  /* =======================================================================
-     BUTTON RIPPLE
-     ======================================================================= */
-
-  function attachRipple(btn) {
-    btn.addEventListener("click", (e) => {
-      if (btn.disabled) return;
-      const rect = btn.getBoundingClientRect();
-      const ripple = document.createElement("span");
-      const size = Math.max(rect.width, rect.height) * 1.4;
-      ripple.className = "ripple";
-      ripple.style.width = ripple.style.height = `${size}px`;
-      ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
-      ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
-      btn.style.position = btn.style.position || "relative";
-      btn.style.overflow = "hidden";
-      btn.appendChild(ripple);
-      setTimeout(() => ripple.remove(), 650);
-    });
-  }
-  document.querySelectorAll(".btn-glow, .btn-chip").forEach(attachRipple);
 
   /* =======================================================================
      TOASTS
@@ -290,47 +203,27 @@
   }
 
   /* =======================================================================
-     URL VALIDATION
-     ======================================================================= */
-
-  const urlInput = document.getElementById("urlInput");
-  const urlCheck = document.getElementById("urlCheck");
-
-  function isValidUrl(value) {
-    return /^https?:\/\/.+\..+/i.test(value.trim());
-  }
-  urlInput.addEventListener("input", () => {
-    urlCheck.classList.toggle("visible", isValidUrl(urlInput.value));
-  });
-
-  /* =======================================================================
-     EXTRACTION
+     URL + EXTRACTION
      ======================================================================= */
 
   const extractForm = document.getElementById("extractForm");
   const extractBtn = document.getElementById("extractBtn");
-  const progressPanel = document.getElementById("progressPanel");
-  const progressFill = document.getElementById("progressFill");
-  const progressLabel = document.getElementById("progressLabel");
+  const urlInput = document.getElementById("urlInput");
+  const urlCard = document.getElementById("urlCard");
+  const extractOverlay = document.getElementById("extractOverlay");
+  const scannerLine = document.getElementById("scannerLine");
+  const dataStreams = document.getElementById("dataStreams");
+  const extractStatus = document.getElementById("extractStatus");
+  const burstCanvas = document.getElementById("burstCanvas");
 
   const actionBar = document.getElementById("actionBar");
-  const dlHtmlBtn = document.getElementById("dlHtml");
-  const dlCssBtn = document.getElementById("dlCss");
-  const dlJsBtn = document.getElementById("dlJs");
-  const dlAllBtn = document.getElementById("dlAll");
-  const clearBtn = document.getElementById("clearAll");
-
+  const statsBar = document.getElementById("statsBar");
   const emptyState = document.getElementById("emptyState");
   const resultsPanel = document.getElementById("resultsPanel");
 
-  const codeHtmlEl = document.getElementById("code-html");
-  const codeCssEl = document.getElementById("code-css");
-  const codeJsEl = document.getElementById("code-js");
-  const fileTreeEl = document.getElementById("fileTree");
-
-  const previewFrame = document.getElementById("previewFrame");
-  const previewSpinner = document.getElementById("previewSpinner");
-  const previewError = document.getElementById("previewError");
+  function isValidUrl(value) {
+    return /^https?:\/\/.+\..+/i.test(value.trim());
+  }
 
   extractForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -347,92 +240,267 @@
     if (e.key === "Enter" && e.ctrlKey) extractForm.requestSubmit();
   });
 
-  function setProgress(pct, label) {
-    progressPanel.hidden = false;
-    progressFill.style.width = `${pct}%`;
-    progressLabel.textContent = label;
+  function showOverlay(status) {
+    extractOverlay.hidden = false;
+    extractOverlay.setAttribute("aria-hidden", "false");
+    extractStatus.textContent = status || "Extracting…";
+    extractOverlay.classList.remove("scanning", "streaming");
+    void extractOverlay.offsetWidth;
+    extractOverlay.classList.add("scanning");
+
+    dataStreams.innerHTML = "";
+    for (let i = 0; i < 12; i++) {
+      const line = document.createElement("div");
+      line.className = "data-stream";
+      line.style.top = `${8 + i * 7.5}%`;
+      line.style.animationDelay = `${0.15 + i * 0.08}s`;
+      dataStreams.appendChild(line);
+    }
+    setTimeout(() => extractOverlay.classList.add("streaming"), 200);
+
+    if (!reducedMotion) {
+      urlCard.classList.add("deconstruct");
+    }
+  }
+
+  function hideOverlay() {
+    extractOverlay.classList.remove("scanning", "streaming");
+    extractOverlay.hidden = true;
+    extractOverlay.setAttribute("aria-hidden", "true");
+    urlCard.classList.remove("deconstruct");
+    urlCard.style.transform = "";
+  }
+
+  function particleBurst() {
+    if (reducedMotion || !burstCanvas) return;
+    const ctx = burstCanvas.getContext("2d");
+    burstCanvas.width = window.innerWidth;
+    burstCanvas.height = window.innerHeight;
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const dots = [];
+    for (let i = 0; i < 20; i++) {
+      const angle = (Math.PI * 2 * i) / 20 + Math.random() * 0.4;
+      const speed = 3 + Math.random() * 5;
+      dots.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+      });
+    }
+    let frames = 0;
+    function frame() {
+      frames++;
+      ctx.clearRect(0, 0, burstCanvas.width, burstCanvas.height);
+      let alive = false;
+      dots.forEach((d) => {
+        d.x += d.vx;
+        d.y += d.vy;
+        d.life -= 0.025;
+        if (d.life > 0) {
+          alive = true;
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,255,255,${d.life})`;
+          ctx.fill();
+        }
+      });
+      if (alive && frames < 60) requestAnimationFrame(frame);
+      else ctx.clearRect(0, 0, burstCanvas.width, burstCanvas.height);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  async function fetchWithCors(url) {
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.text();
+    } catch (err) {
+      const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxy);
+      if (!res.ok) throw new Error(`Proxy failed: ${res.status}`);
+      return await res.text();
+    }
+  }
+
+  function resolveUrl(href, base) {
+    try {
+      return new URL(href, base).href;
+    } catch (e) {
+      return href || "";
+    }
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes || bytes <= 0) return "0 B";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  function parseSource(rawHtml, baseUrl) {
+    const resources = [];
+    let css = "";
+    let js = "";
+    let styleCount = 0;
+    let scriptCount = 0;
+
+    // Meta / title
+    try {
+      const doc = new DOMParser().parseFromString(rawHtml, "text/html");
+      const title = doc.querySelector("title");
+      if (title) {
+        resources.push({ type: "meta", url: "title", status: "ok", note: title.textContent.trim().slice(0, 80) });
+      }
+      doc.querySelectorAll("meta[charset], meta[name], meta[property]").forEach((m) => {
+        const key = m.getAttribute("charset") || m.getAttribute("name") || m.getAttribute("property") || "meta";
+        const val = m.getAttribute("content") || m.getAttribute("charset") || "";
+        resources.push({ type: "meta", url: key, status: "ok", note: String(val).slice(0, 100) });
+      });
+
+      // Inline styles
+      doc.querySelectorAll("style").forEach((s) => {
+        styleCount++;
+        css += `\n\n/* Source: inline style block ${styleCount} */\n${s.textContent}`;
+      });
+
+      // Linked stylesheets
+      doc.querySelectorAll('link[rel="stylesheet"][href]').forEach((link) => {
+        const abs = resolveUrl(link.getAttribute("href"), baseUrl);
+        resources.push({ type: "css", url: abs, status: "linked" });
+      });
+
+      // Inline scripts (no src)
+      doc.querySelectorAll("script").forEach((s) => {
+        if (!s.src) {
+          scriptCount++;
+          js += `\n\n// Source: inline script ${scriptCount}\n${s.textContent}`;
+        } else {
+          const abs = resolveUrl(s.getAttribute("src"), baseUrl);
+          resources.push({ type: "js", url: abs, status: "linked" });
+        }
+      });
+
+      // Images
+      doc.querySelectorAll("img[src]").forEach((img) => {
+        resources.push({ type: "img", url: resolveUrl(img.getAttribute("src"), baseUrl), status: "linked" });
+      });
+
+      // Icons / fonts
+      doc.querySelectorAll('link[rel*="icon"][href]').forEach((l) => {
+        resources.push({ type: "icon", url: resolveUrl(l.getAttribute("href"), baseUrl), status: "linked" });
+      });
+      doc.querySelectorAll('link[href$=".woff2"], link[href$=".woff"], link[rel="preload"][as="font"]').forEach((l) => {
+        resources.push({ type: "font", url: resolveUrl(l.getAttribute("href"), baseUrl), status: "linked" });
+      });
+
+      // Unique anchors
+      const seen = new Set();
+      doc.querySelectorAll("a[href]").forEach((a) => {
+        const href = a.getAttribute("href");
+        if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+        const abs = resolveUrl(href, baseUrl);
+        if (seen.has(abs)) return;
+        seen.add(abs);
+        resources.push({ type: "link", url: abs, status: "linked" });
+      });
+    } catch (err) {
+      // Fallback regex if DOMParser fails on broken HTML
+      const styleRe = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+      let m;
+      while ((m = styleRe.exec(rawHtml)) !== null) {
+        styleCount++;
+        css += `\n\n/* Source: inline style block ${styleCount} */\n${m[1]}`;
+      }
+      const scriptRe = /<script(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)<\/script>/gi;
+      while ((m = scriptRe.exec(rawHtml)) !== null) {
+        scriptCount++;
+        js += `\n\n// Source: inline script ${scriptCount}\n${m[1]}`;
+      }
+    }
+
+    resources.unshift({ type: "html", url: baseUrl, status: "ok" });
+
+    return {
+      html: rawHtml,
+      css: css.trim() || "/* no stylesheets found */",
+      js: js.trim() || "// no scripts found",
+      resources,
+      counts: {
+        styles: styleCount,
+        scripts: scriptCount,
+        resources: resources.filter((r) => r.type !== "html" && r.type !== "meta").length,
+      },
+    };
+  }
+
+  async function enrichLinkedCss(parsed, baseUrl) {
+    const cssLinks = parsed.resources.filter((r) => r.type === "css" && r.status === "linked");
+    let fetched = parsed.css;
+    for (const item of cssLinks.slice(0, 8)) {
+      try {
+        const text = await fetchWithCors(item.url);
+        fetched += `\n\n/* Source: ${item.url} */\n${text}`;
+        item.status = "ok";
+      } catch (e) {
+        item.status = "fail";
+      }
+    }
+    parsed.css = fetched;
+    return parsed;
   }
 
   async function runExtraction(url) {
     extractBtn.classList.add("is-loading");
     extractBtn.disabled = true;
-    setProgress(8, "Fetching page…");
+    showOverlay("Fetching page…");
 
     try {
-      const response = await fetch(url, { mode: "cors" });
-      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
-      const rawHtml = await response.text();
+      await delay(reducedMotion ? 0 : 600);
+      extractStatus.textContent = "Fetching page…";
+      const rawHtml = await fetchWithCors(url);
 
-      setProgress(35, "Parsing HTML, CSS & inline scripts…");
-      const doc = new DOMParser().parseFromString(rawHtml, "text/html");
+      extractStatus.textContent = "Parsing HTML, CSS & scripts…";
+      await delay(reducedMotion ? 0 : 400);
+      let parsed = parseSource(rawHtml, url);
 
-      const inlineCss = Array.from(doc.querySelectorAll("style")).map((s) => s.textContent).join("\n\n");
-      const inlineJs = Array.from(doc.querySelectorAll("script")).filter((s) => !s.src).map((s) => s.textContent).join("\n\n");
+      extractStatus.textContent = "Fetching linked stylesheets…";
+      parsed = await enrichLinkedCss(parsed, url);
 
-      const linkedCssEls = Array.from(doc.querySelectorAll('link[rel="stylesheet"][href]'));
-      const linkedJsEls = Array.from(doc.querySelectorAll("script[src]"));
-      const otherAssets = [];
-      doc.querySelectorAll("img[src]").forEach((el) => otherAssets.push({ type: "img", url: el.getAttribute("src") }));
-      doc.querySelectorAll('link[rel*="icon"][href]').forEach((el) => otherAssets.push({ type: "icon", url: el.getAttribute("href") }));
-      doc.querySelectorAll("source[src], video[src]").forEach((el) => otherAssets.push({ type: "media", url: el.getAttribute("src") }));
-      doc.querySelectorAll('link[rel="preload"][as="font"][href], link[href$=".woff2"], link[href$=".woff"]').forEach((el) =>
-        otherAssets.push({ type: "font", url: el.getAttribute("href") })
-      );
+      state.url = url;
+      state.html = parsed.html;
+      state.css = parsed.css;
+      state.js = parsed.js;
+      state.resources = parsed.resources;
+      state.counts = parsed.counts;
+      state.hasData = true;
 
-      const tree = [];
-      tree.push({ type: "html", url: url, status: "ok" });
+      particleBurst();
+      await delay(reducedMotion ? 0 : 500);
+      hideOverlay();
 
-      let fetchedCss = inlineCss;
-      let fetchedJs = inlineJs;
-
-      const linkedFiles = [
-        ...linkedCssEls.map((el) => ({ kind: "css", url: resolveUrl(el.getAttribute("href"), url) })),
-        ...linkedJsEls.map((el) => ({ kind: "js", url: resolveUrl(el.getAttribute("src"), url) })),
-      ];
-
-      const total = linkedFiles.length || 1;
-      let done = 0;
-
-      for (const file of linkedFiles) {
-        setProgress(40 + Math.round((done / total) * 45), `Fetching linked assets… (${done + 1}/${total})`);
-        try {
-          const res = await fetch(file.url, { mode: "cors" });
-          if (!res.ok) throw new Error(String(res.status));
-          const text = await res.text();
-          if (file.kind === "css") fetchedCss += `\n\n/* ${file.url} */\n${text}`;
-          else fetchedJs += `\n\n// ${file.url}\n${text}`;
-          tree.push({ type: file.kind, url: file.url, status: "ok" });
-        } catch (err) {
-          tree.push({ type: file.kind, url: file.url, status: "fail" });
-        }
-        done++;
-      }
-
-      otherAssets.forEach((a) => tree.push({ type: a.type, url: resolveUrl(a.url, url), status: "listed" }));
-
-      setProgress(95, "Building file tree & preview…");
-      state = { html: rawHtml, css: fetchedCss, js: fetchedJs, tree, url };
-
-      populateResults(state);
+      populateResults();
       revealResults();
-      setProgress(100, "Done");
       showToast("Source extracted");
     } catch (err) {
       console.error(err);
-      showToast("Couldn't fetch that URL — likely blocked by CORS. Try a CORS proxy or run it from a local server.");
+      hideOverlay();
+      showToast("CORS blocked. Try a CORS extension, or paste code manually.");
     } finally {
       extractBtn.classList.remove("is-loading");
       extractBtn.disabled = false;
-      setTimeout(() => { progressPanel.hidden = true; progressFill.style.width = "0%"; }, 900);
     }
   }
 
-  function resolveUrl(href, base) {
-    try { return new URL(href, base).href; } catch (e) { return href; }
+  function delay(ms) {
+    return new Promise((r) => setTimeout(r, ms));
   }
 
   /* =======================================================================
-     SYNTAX HIGHLIGHTING (vanilla, monochrome-agnostic — themed via CSS)
+     SYNTAX HIGHLIGHTING
      ======================================================================= */
 
   function escapeHtml(str) {
@@ -440,69 +508,103 @@
   }
 
   function highlightHTML(code) {
-    let escaped = escapeHtml(code);
-    escaped = escaped.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="tk-comment">$1</span>');
-    escaped = escaped.replace(/(&lt;\/?[a-zA-Z0-9-]+)([^&]*?)(\/?&gt;)/g, (match, open, attrs, close) => {
+    let e = escapeHtml(code);
+    e = e.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="token-comment">$1</span>');
+    e = e.replace(/(&lt;\/?[a-zA-Z0-9-]+)([^&]*?)(\/?&gt;)/g, (match, open, attrs, close) => {
       const attrHtml = attrs.replace(
         /([a-zA-Z-:]+)(=)("[^"]*"|'[^']*')/g,
-        '<span class="tk-attr">$1</span>$2<span class="tk-string">$3</span>'
+        '<span class="token-attr">$1</span>$2<span class="token-string">$3</span>'
       );
-      return `<span class="tk-tag">${open}</span>${attrHtml}<span class="tk-tag">${close}</span>`;
+      return `<span class="token-tag">${open}</span>${attrHtml}<span class="token-tag">${close}</span>`;
     });
-    return escaped;
+    return e;
   }
 
   function highlightCSS(code) {
-    let escaped = escapeHtml(code);
-    escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="tk-comment">$1</span>');
-    escaped = escaped.replace(/([.#]?[a-zA-Z0-9_-]+)(\s*\{)/g, '<span class="tk-selector">$1</span>$2');
-    escaped = escaped.replace(
+    let e = escapeHtml(code);
+    e = e.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="token-comment">$1</span>');
+    e = e.replace(/([.#]?[a-zA-Z0-9_-]+)(\s*\{)/g, '<span class="token-selector">$1</span>$2');
+    e = e.replace(
       /([a-zA-Z-]+)(\s*:\s*)([^;{}\n]+)(;?)/g,
-      '<span class="tk-property">$1</span>$2<span class="tk-value">$3</span>$4'
+      '<span class="token-property">$1</span>$2<span class="token-value">$3</span>$4'
     );
-    return escaped;
+    return e;
   }
 
-  const JS_KEYWORDS = /\b(const|let|var|function|return|if|else|for|while|switch|case|break|continue|class|extends|new|this|import|export|default|from|async|await|try|catch|finally|throw|typeof|instanceof|null|undefined|true|false|void|yield|static|get|set)\b/g;
+  const JS_KEYWORDS =
+    /\b(const|let|var|function|return|if|else|for|while|switch|case|break|continue|class|extends|new|this|import|export|default|from|async|await|try|catch|finally|throw|typeof|instanceof|null|undefined|true|false|void|yield|static|get|set)\b/g;
 
   function highlightJS(code) {
-    let escaped = escapeHtml(code);
-    escaped = escaped.replace(/(\/\/[^\n]*)/g, '<span class="tk-comment">$1</span>');
-    escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="tk-comment">$1</span>');
-    escaped = escaped.replace(/(&#39;[^&]*?&#39;|"[^"]*?"|`[^`]*?`)/g, '<span class="tk-string">$1</span>');
-    escaped = escaped.replace(JS_KEYWORDS, '<span class="tk-keyword">$1</span>');
-    escaped = escaped.replace(/\b([a-zA-Z_$][\w$]*)(?=\()/g, '<span class="tk-func">$1</span>');
-    escaped = escaped.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="tk-number">$1</span>');
-    return escaped;
+    let e = escapeHtml(code);
+    e = e.replace(/(\/\/[^\n]*)/g, '<span class="token-comment">$1</span>');
+    e = e.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="token-comment">$1</span>');
+    e = e.replace(/(&#39;[^&]*?&#39;|"[^"]*?"|`[^`]*?`)/g, '<span class="token-string">$1</span>');
+    e = e.replace(JS_KEYWORDS, '<span class="token-keyword">$1</span>');
+    e = e.replace(/\b([a-zA-Z_$][\w$]*)(?=\()/g, '<span class="token-func">$1</span>');
+    e = e.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="token-number">$1</span>');
+    return e;
   }
 
   /* =======================================================================
      RENDER RESULTS
      ======================================================================= */
 
-  function populateResults(s) {
-    codeHtmlEl.innerHTML = s.html ? highlightHTML(s.html) : "";
-    codeCssEl.innerHTML = s.css ? highlightCSS(s.css) : "/* no stylesheets found */";
-    codeJsEl.innerHTML = s.js ? highlightJS(s.js) : "// no scripts found";
+  const codeHtmlEl = document.getElementById("code-html");
+  const codeCssEl = document.getElementById("code-css");
+  const codeJsEl = document.getElementById("code-js");
+  const fileTreeEl = document.getElementById("fileTree");
+  const previewFrame = document.getElementById("previewFrame");
+  const previewSpinner = document.getElementById("previewSpinner");
+  const previewError = document.getElementById("previewError");
+
+  function populateResults() {
+    const htmlBytes = new Blob([state.html]).size;
+    const cssBytes = new Blob([state.css]).size;
+    const jsBytes = new Blob([state.js]).size;
+
+    document.getElementById("size-html").textContent = `(${formatBytes(htmlBytes)})`;
+    document.getElementById("size-css").textContent = `(${formatBytes(cssBytes)})`;
+    document.getElementById("size-js").textContent = `(${formatBytes(jsBytes)})`;
+
+    document.getElementById("statStyles").textContent = `${state.counts.styles} style blocks`;
+    document.getElementById("statScripts").textContent = `${state.counts.scripts} script blocks`;
+    document.getElementById("statResources").textContent = `${state.counts.resources} external resources`;
+
+    // Cap display size for huge pages
+    const maxDisplay = 400000;
+    const htmlShow = state.html.length > maxDisplay ? state.html.slice(0, maxDisplay) + "\n\n/* … truncated for display … */" : state.html;
+    const cssShow = state.css.length > maxDisplay ? state.css.slice(0, maxDisplay) + "\n\n/* … truncated … */" : state.css;
+    const jsShow = state.js.length > maxDisplay ? state.js.slice(0, maxDisplay) + "\n\n// … truncated …" : state.js;
+
+    codeHtmlEl.innerHTML = highlightHTML(htmlShow);
+    codeCssEl.innerHTML = highlightCSS(cssShow);
+    codeJsEl.innerHTML = highlightJS(jsShow);
 
     fileTreeEl.innerHTML = "";
-    if (!s.tree.length) {
+    if (!state.resources.length) {
       fileTreeEl.innerHTML = '<li class="tree-empty">No assets found.</li>';
     } else {
-      s.tree.forEach((item) => {
+      state.resources.forEach((item) => {
         const li = document.createElement("li");
         const typeSpan = document.createElement("span");
         typeSpan.className = "tree-type";
         typeSpan.textContent = item.type;
         const statusSpan = document.createElement("span");
         statusSpan.className = `tree-status ${item.status === "ok" ? "ok" : item.status === "fail" ? "fail" : ""}`;
-        statusSpan.textContent = item.status === "ok" ? "fetched" : item.status === "fail" ? "blocked" : "linked";
+        statusSpan.textContent =
+          item.status === "ok" ? "fetched" : item.status === "fail" ? "blocked" : item.status === "linked" ? "linked" : item.status;
         const urlSpan = document.createElement("span");
         urlSpan.className = "tree-url";
         urlSpan.textContent = item.url;
         li.appendChild(typeSpan);
         li.appendChild(statusSpan);
         li.appendChild(urlSpan);
+        if (item.note) {
+          const note = document.createElement("span");
+          note.className = "tree-meta";
+          note.textContent = item.note;
+          li.appendChild(note);
+        }
         fileTreeEl.appendChild(li);
       });
     }
@@ -514,7 +616,23 @@
   function revealResults() {
     emptyState.hidden = true;
     resultsPanel.hidden = false;
+    actionBar.hidden = false;
+    statsBar.hidden = false;
     actionBar.querySelectorAll("button").forEach((b) => (b.disabled = false));
+
+    // Staggered 3D fly-in
+    const panels = resultsPanel.querySelectorAll(".panel");
+    panels.forEach((p, i) => {
+      p.classList.remove("fly-in");
+      if (reducedMotion) return;
+      setTimeout(() => {
+        if (!p.hidden) {
+          p.classList.add("fly-in");
+        }
+      }, i * 150);
+    });
+
+    setupCardTilt();
   }
 
   /* =======================================================================
@@ -538,13 +656,17 @@
         p.style.animation = "none";
         void p.offsetWidth;
         p.style.animation = "";
+        p.classList.add("fly-in");
       }
     });
-    if (name === "preview" && state) renderPreview();
+    if (name === "preview" && state.hasData) renderPreview();
   }
 
   function renderPreview() {
-    if (!state || !state.html) { previewError.hidden = false; return; }
+    if (!state.html) {
+      previewError.hidden = false;
+      return;
+    }
     previewError.hidden = true;
     previewSpinner.classList.add("active");
 
@@ -557,7 +679,10 @@
     }
 
     previewFrame.onload = () => previewSpinner.classList.remove("active");
-    previewFrame.onerror = () => { previewSpinner.classList.remove("active"); previewError.hidden = false; };
+    previewFrame.onerror = () => {
+      previewSpinner.classList.remove("active");
+      previewError.hidden = false;
+    };
 
     try {
       previewFrame.srcdoc = htmlWithBase;
@@ -568,29 +693,25 @@
   }
 
   /* =======================================================================
-     COPY
+     COPY / DOWNLOAD / CLEAR
      ======================================================================= */
 
   document.querySelectorAll(".btn-copy").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!state) return;
+      if (!state.hasData) return;
       const key = btn.dataset.copy;
       const text = state[key] || "";
       try {
         await navigator.clipboard.writeText(text);
         const original = btn.textContent;
         btn.textContent = "Copied!";
-        showToast("Copied to clipboard!");
+        showToast("Copied to clipboard");
         setTimeout(() => (btn.textContent = original), 1200);
       } catch (err) {
-        showToast("Couldn't copy — your browser blocked clipboard access.");
+        showToast("Clipboard blocked by browser");
       }
     });
   });
-
-  /* =======================================================================
-     DOWNLOADS
-     ======================================================================= */
 
   function timestamp() {
     const d = new Date();
@@ -610,33 +731,44 @@
     URL.revokeObjectURL(url);
   }
 
-  function downloadHTML() { if (state) createDownloadFile(state.html, `sourcew-${timestamp()}-source.html`, "text/html"); }
-  function downloadCSS() { if (state) createDownloadFile(state.css, `sourcew-${timestamp()}-style.css`, "text/css"); }
-  function downloadJS() { if (state) createDownloadFile(state.js, `sourcew-${timestamp()}-script.js`, "application/javascript"); }
+  function downloadHTML() {
+    if (state.hasData) createDownloadFile(state.html, `sourcew-${timestamp()}-source.html`, "text/html");
+  }
+  function downloadCSS() {
+    if (state.hasData) createDownloadFile(state.css, `sourcew-${timestamp()}-style.css`, "text/css");
+  }
+  function downloadJS() {
+    if (state.hasData) createDownloadFile(state.js, `sourcew-${timestamp()}-script.js`, "application/javascript");
+  }
 
-  dlHtmlBtn.addEventListener("click", () => { downloadHTML(); showToast("Download started"); });
-  dlCssBtn.addEventListener("click", () => { downloadCSS(); showToast("Download started"); });
-  dlJsBtn.addEventListener("click", () => { downloadJS(); showToast("Download started"); });
-  dlAllBtn.addEventListener("click", () => {
-    if (!state) return;
+  document.getElementById("dlHtml").addEventListener("click", () => {
+    downloadHTML();
+    showToast("Download started");
+  });
+  document.getElementById("dlCss").addEventListener("click", () => {
+    downloadCSS();
+    showToast("Download started");
+  });
+  document.getElementById("dlJs").addEventListener("click", () => {
+    downloadJS();
+    showToast("Download started");
+  });
+  document.getElementById("dlAll").addEventListener("click", () => {
+    if (!state.hasData) return;
     downloadHTML();
     setTimeout(downloadCSS, 200);
     setTimeout(downloadJS, 400);
     showToast("3 files downloaded");
   });
 
-  /* =======================================================================
-     CLEAR ALL
-     ======================================================================= */
-
-  clearBtn.addEventListener("click", () => {
-    if (!state) return;
+  document.getElementById("clearAll").addEventListener("click", () => {
+    if (!state.hasData) return;
     const panels = document.querySelectorAll(".panel");
     if (!reducedMotion) {
       panels.forEach((p) => {
-        p.style.transition = "opacity .3s var(--ease), transform .3s var(--ease)";
+        p.style.transition = "opacity 0.3s var(--ease), transform 0.3s var(--ease)";
         p.style.opacity = "0";
-        p.style.transform = "translateY(-16px)";
+        p.style.transform = "translateZ(-200px)";
       });
     }
     const finish = () => {
@@ -648,22 +780,29 @@
       previewFrame.onload = null;
 
       urlInput.value = "";
-      urlCheck.classList.remove("visible");
       urlInput.focus();
 
-      state = null;
+      state.url = "";
+      state.html = "";
+      state.css = "";
+      state.js = "";
+      state.resources = [];
+      state.hasData = false;
+      state.counts = { styles: 0, scripts: 0, resources: 0 };
+
       resultsPanel.hidden = true;
       emptyState.hidden = false;
-
+      actionBar.hidden = true;
+      statsBar.hidden = true;
       actionBar.querySelectorAll("button").forEach((b) => (b.disabled = true));
 
-      panels.forEach((p) => { p.style.transition = ""; p.style.opacity = ""; p.style.transform = ""; });
+      panels.forEach((p) => {
+        p.style.transition = "";
+        p.style.opacity = "";
+        p.style.transform = "";
+      });
       switchTab("html");
-
-      const original = clearBtn.textContent;
-      clearBtn.textContent = "Cleared!";
-      setTimeout(() => (clearBtn.textContent = original), 1000);
-      showToast("All content cleared");
+      showToast("Cleared");
     };
     reducedMotion ? finish() : setTimeout(finish, 300);
   });
