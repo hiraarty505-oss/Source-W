@@ -5,193 +5,254 @@
 (function () {
   "use strict";
 
-  /* ---------------------------------------------------------------------
-     STATE
-     --------------------------------------------------------------------- */
-  let state = null; // { html, css, js, resources, url }
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  /* ---------------------------------------------------------------------
-     ELEMENTS
-     --------------------------------------------------------------------- */
-  const landing = document.getElementById("landing");
-  const enterBtn = document.getElementById("enterBtn");
-  const app = document.getElementById("app");
-  const canvas = document.getElementById("particle-canvas");
-
-  const extractForm = document.getElementById("extractForm");
-  const urlInput = document.getElementById("urlInput");
-  const extractBtn = document.getElementById("extractBtn");
-  const scannerOverlay = document.getElementById("scannerOverlay");
-
-  const actionBar = document.getElementById("actionBar");
-  const dlHtmlBtn = document.getElementById("dlHtml");
-  const dlCssBtn = document.getElementById("dlCss");
-  const dlJsBtn = document.getElementById("dlJs");
-  const dlAllBtn = document.getElementById("dlAll");
-  const clearBtn = document.getElementById("clearAll");
-
-  const emptyState = document.getElementById("emptyState");
-  const resultsSection = document.getElementById("results");
-
-  const toastContainer = document.getElementById("toastContainer");
-
-  const codeHtmlEl = document.getElementById("code-html");
-  const codeCssEl = document.getElementById("code-css");
-  const codeJsEl = document.getElementById("code-js");
-  const resourceList = document.getElementById("resourceList");
-
-  const previewFrame = document.getElementById("previewFrame");
-  const previewSpinner = document.getElementById("previewSpinner");
-  const previewError = document.getElementById("previewError");
+  let state = null; // { html, css, js, tree, url }
 
   /* =======================================================================
-     LANDING SEQUENCE
+     NAV — hamburger + smooth scroll CTAs
      ======================================================================= */
 
-  function enterApp() {
-    if (landing.classList.contains("exit")) return;
-    landing.classList.add("exit");
-    landing.setAttribute("aria-hidden", "true");
-    app.removeAttribute("aria-hidden");
-    app.classList.add("visible");
-    setTimeout(() => {
-      landing.style.display = "none";
-      urlInput.focus();
-    }, reducedMotion ? 0 : 900);
-  }
+  const nav = document.getElementById("nav");
+  const hamburger = document.getElementById("hamburger");
+  const navLinks = document.getElementById("navLinks");
 
-  enterBtn.addEventListener("click", enterApp);
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !landing.classList.contains("exit")) {
-      enterApp();
-    }
+  hamburger.addEventListener("click", () => {
+    const isOpen = nav.classList.toggle("menu-open");
+    hamburger.classList.toggle("open", isOpen);
+    hamburger.setAttribute("aria-expanded", String(isOpen));
   });
+  navLinks.querySelectorAll("a").forEach((a) =>
+    a.addEventListener("click", () => {
+      nav.classList.remove("menu-open");
+      hamburger.classList.remove("open");
+      hamburger.setAttribute("aria-expanded", "false");
+    })
+  );
 
-  if (!reducedMotion) {
-    setTimeout(enterApp, 9000); // gentle auto-advance safety net, well after the sequence finishes
+  function scrollToExtract() {
+    document.getElementById("extract").scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
+    setTimeout(() => document.getElementById("urlInput").focus(), reducedMotion ? 0 : 500);
   }
+  document.getElementById("navExtractBtn").addEventListener("click", scrollToExtract);
+  document.getElementById("heroExtractBtn").addEventListener("click", scrollToExtract);
+  document.getElementById("scrollCue").addEventListener("click", scrollToExtract);
 
   /* =======================================================================
-     PARTICLE SYSTEM (Canvas 2D, monochrome)
+     THREE.JS — HERO SCENE
      ======================================================================= */
 
-  const ctx = canvas.getContext("2d");
-  let particles = [];
-  let animId = null;
+  const heroCanvas = document.getElementById("hero-canvas");
+  let heroRenderer, heroScene, heroCamera, heroShapes = [], heroParticles;
+  let mouseX = 0, mouseY = 0;
 
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
+  function initHeroScene() {
+    heroRenderer = new THREE.WebGLRenderer({ canvas: heroCanvas, antialias: true, alpha: true });
+    heroRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    heroRenderer.setSize(window.innerWidth, window.innerHeight);
 
-  function initParticles() {
-    resizeCanvas();
-    const count = window.innerWidth < 640 ? 34 : 70;
-    particles = Array.from({ length: count }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      z: Math.random(), // depth 0..1, affects size + opacity
-      vx: (Math.random() - 0.5) * 0.25,
-      vy: (Math.random() - 0.5) * 0.25,
-    }));
-  }
+    heroScene = new THREE.Scene();
+    heroCamera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+    heroCamera.position.z = 9;
 
-  function stepParticles() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const colors = [0x8b5cf6, 0x6366f1, 0x22d3ee];
+    const geos = [
+      new THREE.IcosahedronGeometry(1, 0),
+      new THREE.OctahedronGeometry(0.9, 0),
+      new THREE.TorusGeometry(0.7, 0.24, 8, 24),
+      new THREE.TetrahedronGeometry(1, 0),
+      new THREE.IcosahedronGeometry(0.6, 0),
+    ];
 
-    for (const p of particles) {
-      p.x += p.vx;
-      p.y += p.vy;
-      if (p.x < 0) p.x = canvas.width;
-      if (p.x > canvas.width) p.x = 0;
-      if (p.y < 0) p.y = canvas.height;
-      if (p.y > canvas.height) p.y = 0;
+    for (let i = 0; i < geos.length; i++) {
+      const material = new THREE.MeshBasicMaterial({
+        color: colors[i % colors.length],
+        wireframe: true,
+        transparent: true,
+        opacity: 0.55,
+      });
+      const mesh = new THREE.Mesh(geos[i], material);
+      const angle = (i / geos.length) * Math.PI * 2;
+      const radius = 3.6;
+      mesh.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius * 0.5, (Math.random() - 0.5) * 3);
+      mesh.userData.spin = { x: (Math.random() - 0.5) * 0.004, y: (Math.random() - 0.5) * 0.006 };
+      mesh.userData.floatOffset = Math.random() * Math.PI * 2;
+      heroScene.add(mesh);
+      heroShapes.push(mesh);
     }
 
-    // connective lines between nearby particles
-    for (let i = 0; i < particles.length; i++) {
-      for (let j = i + 1; j < particles.length; j++) {
-        const a = particles[i], b = particles[j];
-        const dx = a.x - b.x, dy = a.y - b.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 120) {
-          ctx.strokeStyle = `rgba(255,255,255,${0.08 * (1 - dist / 120)})`;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-        }
-      }
+    // particle field
+    const particleCount = window.innerWidth < 640 ? 250 : 600;
+    const positions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 20;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 12;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 14;
     }
+    const particleGeo = new THREE.BufferGeometry();
+    particleGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const particleMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true, opacity: 0.5 });
+    heroParticles = new THREE.Points(particleGeo, particleMat);
+    heroScene.add(heroParticles);
 
-    // dots
-    for (const p of particles) {
-      const radius = 0.6 + p.z * 2;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${200 + p.z * 55}, ${200 + p.z * 55}, ${200 + p.z * 55}, ${0.25 + p.z * 0.5})`;
-      ctx.fill();
-    }
+    window.addEventListener("mousemove", (e) => {
+      mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+      mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+    });
 
-    animId = requestAnimationFrame(stepParticles);
+    window.addEventListener("resize", onHeroResize);
+    animateHero();
   }
 
-  function startParticles() {
-    initParticles();
-    if (!reducedMotion) {
-      animId = requestAnimationFrame(stepParticles);
-    } else {
-      stepParticles(); // draw a single static frame
-      cancelAnimationFrame(animId);
-    }
+  function onHeroResize() {
+    heroCamera.aspect = window.innerWidth / window.innerHeight;
+    heroCamera.updateProjectionMatrix();
+    heroRenderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  window.addEventListener("resize", () => {
-    if (landing.style.display !== "none") initParticles();
-  });
+  const clock = new THREE.Clock();
+  function animateHero() {
+    requestAnimationFrame(animateHero);
+    const t = clock.getElapsedTime();
 
-  document.addEventListener("DOMContentLoaded", startParticles);
-  // In case DOMContentLoaded already fired by the time this script runs:
-  if (document.readyState !== "loading") startParticles();
+    heroShapes.forEach((mesh) => {
+      mesh.rotation.x += mesh.userData.spin.x;
+      mesh.rotation.y += mesh.userData.spin.y;
+      mesh.position.y += Math.sin(t * 0.6 + mesh.userData.floatOffset) * 0.0015;
+    });
+
+    heroParticles.rotation.y = t * 0.02;
+
+    // parallax: camera eases toward mouse position
+    heroCamera.position.x += (mouseX * 1.2 - heroCamera.position.x) * 0.03;
+    heroCamera.position.y += (-mouseY * 0.8 - heroCamera.position.y) * 0.03;
+    heroCamera.lookAt(0, 0, 0);
+
+    heroRenderer.render(heroScene, heroCamera);
+  }
+
+  if (window.THREE) initHeroScene();
 
   /* =======================================================================
-     3D MOUSE TRACKING FOR CARDS
+     THREE.JS — MODAL 3D PREVIEW (drag to rotate)
      ======================================================================= */
 
-  function attachTilt(el) {
-    let raf = null;
-    const maxTilt = 8;
+  const modal = document.getElementById("previewModal");
+  const modalCanvas = document.getElementById("modal-canvas");
+  const modalClose = document.getElementById("modalClose");
+  const modalBackdrop = document.getElementById("modalBackdrop");
+  let modalRenderer, modalScene, modalCamera, modalGroup, modalAnimId;
+  let isDragging = false, lastX = 0, lastY = 0;
 
-    el.addEventListener("mousemove", (e) => {
-      if (reducedMotion) return;
-      const rect = el.getBoundingClientRect();
-      const px = (e.clientX - rect.left) / rect.width - 0.5;
-      const py = (e.clientY - rect.top) / rect.height - 0.5;
+  function initModalScene() {
+    if (modalRenderer) return; // already built
 
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const rotateY = px * maxTilt * 2;
-        const rotateX = -py * maxTilt * 2;
-        el.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(10px)`;
+    modalRenderer = new THREE.WebGLRenderer({ canvas: modalCanvas, antialias: true, alpha: true });
+    modalRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    modalScene = new THREE.Scene();
+    modalCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    modalCamera.position.z = 5;
+
+    modalGroup = new THREE.Group();
+    const colors = [0x8b5cf6, 0x6366f1, 0x22d3ee];
+    const geos = [
+      new THREE.TorusKnotGeometry(0.9, 0.28, 100, 16),
+      new THREE.IcosahedronGeometry(1.7, 0),
+    ];
+    geos.forEach((geo, i) => {
+      const mat = new THREE.MeshBasicMaterial({ color: colors[i], wireframe: true, transparent: true, opacity: 0.6 });
+      const mesh = new THREE.Mesh(geo, mat);
+      modalGroup.add(mesh);
+    });
+    modalScene.add(modalGroup);
+
+    resizeModalCanvas();
+
+    const startDrag = (x, y) => { isDragging = true; lastX = x; lastY = y; };
+    const moveDrag = (x, y) => {
+      if (!isDragging) return;
+      modalGroup.rotation.y += (x - lastX) * 0.008;
+      modalGroup.rotation.x += (y - lastY) * 0.008;
+      lastX = x; lastY = y;
+    };
+    const endDrag = () => { isDragging = false; };
+
+    modalCanvas.addEventListener("mousedown", (e) => startDrag(e.clientX, e.clientY));
+    window.addEventListener("mousemove", (e) => moveDrag(e.clientX, e.clientY));
+    window.addEventListener("mouseup", endDrag);
+    modalCanvas.addEventListener("touchstart", (e) => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); }, { passive: true });
+    modalCanvas.addEventListener("touchmove", (e) => { const t = e.touches[0]; moveDrag(t.clientX, t.clientY); }, { passive: true });
+    modalCanvas.addEventListener("touchend", endDrag);
+
+    animateModal();
+  }
+
+  function resizeModalCanvas() {
+    const rect = modalCanvas.parentElement.getBoundingClientRect();
+    modalCamera.aspect = rect.width / rect.height;
+    modalCamera.updateProjectionMatrix();
+    modalRenderer.setSize(rect.width, rect.height);
+  }
+
+  function animateModal() {
+    modalAnimId = requestAnimationFrame(animateModal);
+    if (!isDragging && !reducedMotion) {
+      modalGroup.rotation.y += 0.003;
+    }
+    modalRenderer.render(modalScene, modalCamera);
+  }
+
+  function openModal() {
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    if (window.THREE) {
+      initModalScene();
+      requestAnimationFrame(resizeModalCanvas);
+    }
+  }
+  function closeModal() {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+  document.getElementById("preview3dBtn").addEventListener("click", openModal);
+  modalClose.addEventListener("click", closeModal);
+  modalBackdrop.addEventListener("click", closeModal);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  window.addEventListener("resize", () => { if (modalRenderer) resizeModalCanvas(); });
+
+  /* =======================================================================
+     GSAP SCROLL REVEALS (falls back to IntersectionObserver)
+     ======================================================================= */
+
+  const revealEls = document.querySelectorAll(".reveal");
+  if (window.gsap && window.ScrollTrigger) {
+    gsap.registerPlugin(ScrollTrigger);
+    revealEls.forEach((el) => {
+      gsap.to(el, {
+        opacity: 1,
+        y: 0,
+        duration: 0.7,
+        ease: "power2.out",
+        scrollTrigger: { trigger: el, start: "top 88%" },
       });
     });
-
-    el.addEventListener("mouseleave", () => {
-      if (raf) cancelAnimationFrame(raf);
-      el.style.transform = "rotateX(2deg) rotateY(0deg)";
-    });
+  } else {
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in-view");
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    revealEls.forEach((el) => io.observe(el));
   }
-
-  function attachTiltToAllCards() {
-    document.querySelectorAll(".card-3d").forEach(attachTilt);
-  }
-  attachTiltToAllCards();
 
   /* =======================================================================
-     3D TOUCH BUTTON — RIPPLE FEEDBACK
+     BUTTON RIPPLE
      ======================================================================= */
 
   function attachRipple(btn) {
@@ -204,16 +265,19 @@
       ripple.style.width = ripple.style.height = `${size}px`;
       ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
       ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+      btn.style.position = btn.style.position || "relative";
+      btn.style.overflow = "hidden";
       btn.appendChild(ripple);
       setTimeout(() => ripple.remove(), 650);
     });
   }
-  document.querySelectorAll(".btn-3d").forEach(attachRipple);
+  document.querySelectorAll(".btn-glow, .btn-chip").forEach(attachRipple);
 
   /* =======================================================================
      TOASTS
      ======================================================================= */
 
+  const toastContainer = document.getElementById("toastContainer");
   function showToast(message) {
     const toast = document.createElement("div");
     toast.className = "toast";
@@ -222,112 +286,162 @@
     setTimeout(() => {
       toast.classList.add("leaving");
       setTimeout(() => toast.remove(), 320);
-    }, 2400);
+    }, 2600);
   }
 
   /* =======================================================================
-     URL SUBMISSION + EXTRACTION
+     URL VALIDATION
      ======================================================================= */
 
+  const urlInput = document.getElementById("urlInput");
+  const urlCheck = document.getElementById("urlCheck");
+
   function isValidUrl(value) {
-    return /^https?:\/\/.+/i.test(value.trim());
+    return /^https?:\/\/.+\..+/i.test(value.trim());
   }
+  urlInput.addEventListener("input", () => {
+    urlCheck.classList.toggle("visible", isValidUrl(urlInput.value));
+  });
+
+  /* =======================================================================
+     EXTRACTION
+     ======================================================================= */
+
+  const extractForm = document.getElementById("extractForm");
+  const extractBtn = document.getElementById("extractBtn");
+  const progressPanel = document.getElementById("progressPanel");
+  const progressFill = document.getElementById("progressFill");
+  const progressLabel = document.getElementById("progressLabel");
+
+  const actionBar = document.getElementById("actionBar");
+  const dlHtmlBtn = document.getElementById("dlHtml");
+  const dlCssBtn = document.getElementById("dlCss");
+  const dlJsBtn = document.getElementById("dlJs");
+  const dlAllBtn = document.getElementById("dlAll");
+  const clearBtn = document.getElementById("clearAll");
+
+  const emptyState = document.getElementById("emptyState");
+  const resultsPanel = document.getElementById("resultsPanel");
+
+  const codeHtmlEl = document.getElementById("code-html");
+  const codeCssEl = document.getElementById("code-css");
+  const codeJsEl = document.getElementById("code-js");
+  const fileTreeEl = document.getElementById("fileTree");
+
+  const previewFrame = document.getElementById("previewFrame");
+  const previewSpinner = document.getElementById("previewSpinner");
+  const previewError = document.getElementById("previewError");
 
   extractForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const url = urlInput.value.trim();
-
     if (!isValidUrl(url)) {
       showToast("Enter a valid URL starting with http:// or https://");
       urlInput.focus();
       return;
     }
-
     await runExtraction(url);
   });
 
   urlInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && e.ctrlKey) {
-      extractForm.requestSubmit();
-    }
+    if (e.key === "Enter" && e.ctrlKey) extractForm.requestSubmit();
   });
 
+  function setProgress(pct, label) {
+    progressPanel.hidden = false;
+    progressFill.style.width = `${pct}%`;
+    progressLabel.textContent = label;
+  }
+
   async function runExtraction(url) {
-    setExtractLoading(true);
-    scannerOverlay.classList.add("active");
+    extractBtn.classList.add("is-loading");
+    extractBtn.disabled = true;
+    setProgress(8, "Fetching page…");
 
     try {
       const response = await fetch(url, { mode: "cors" });
       if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
       const rawHtml = await response.text();
 
-      const parsed = parseSource(rawHtml, url);
-      state = { ...parsed, url };
+      setProgress(35, "Parsing HTML, CSS & inline scripts…");
+      const doc = new DOMParser().parseFromString(rawHtml, "text/html");
+
+      const inlineCss = Array.from(doc.querySelectorAll("style")).map((s) => s.textContent).join("\n\n");
+      const inlineJs = Array.from(doc.querySelectorAll("script")).filter((s) => !s.src).map((s) => s.textContent).join("\n\n");
+
+      const linkedCssEls = Array.from(doc.querySelectorAll('link[rel="stylesheet"][href]'));
+      const linkedJsEls = Array.from(doc.querySelectorAll("script[src]"));
+      const otherAssets = [];
+      doc.querySelectorAll("img[src]").forEach((el) => otherAssets.push({ type: "img", url: el.getAttribute("src") }));
+      doc.querySelectorAll('link[rel*="icon"][href]').forEach((el) => otherAssets.push({ type: "icon", url: el.getAttribute("href") }));
+      doc.querySelectorAll("source[src], video[src]").forEach((el) => otherAssets.push({ type: "media", url: el.getAttribute("src") }));
+      doc.querySelectorAll('link[rel="preload"][as="font"][href], link[href$=".woff2"], link[href$=".woff"]').forEach((el) =>
+        otherAssets.push({ type: "font", url: el.getAttribute("href") })
+      );
+
+      const tree = [];
+      tree.push({ type: "html", url: url, status: "ok" });
+
+      let fetchedCss = inlineCss;
+      let fetchedJs = inlineJs;
+
+      const linkedFiles = [
+        ...linkedCssEls.map((el) => ({ kind: "css", url: resolveUrl(el.getAttribute("href"), url) })),
+        ...linkedJsEls.map((el) => ({ kind: "js", url: resolveUrl(el.getAttribute("src"), url) })),
+      ];
+
+      const total = linkedFiles.length || 1;
+      let done = 0;
+
+      for (const file of linkedFiles) {
+        setProgress(40 + Math.round((done / total) * 45), `Fetching linked assets… (${done + 1}/${total})`);
+        try {
+          const res = await fetch(file.url, { mode: "cors" });
+          if (!res.ok) throw new Error(String(res.status));
+          const text = await res.text();
+          if (file.kind === "css") fetchedCss += `\n\n/* ${file.url} */\n${text}`;
+          else fetchedJs += `\n\n// ${file.url}\n${text}`;
+          tree.push({ type: file.kind, url: file.url, status: "ok" });
+        } catch (err) {
+          tree.push({ type: file.kind, url: file.url, status: "fail" });
+        }
+        done++;
+      }
+
+      otherAssets.forEach((a) => tree.push({ type: a.type, url: resolveUrl(a.url, url), status: "listed" }));
+
+      setProgress(95, "Building file tree & preview…");
+      state = { html: rawHtml, css: fetchedCss, js: fetchedJs, tree, url };
 
       populateResults(state);
       revealResults();
+      setProgress(100, "Done");
       showToast("Source extracted");
     } catch (err) {
       console.error(err);
       showToast("Couldn't fetch that URL — likely blocked by CORS. Try a CORS proxy or run it from a local server.");
     } finally {
-      setExtractLoading(false);
-      scannerOverlay.classList.remove("active");
+      extractBtn.classList.remove("is-loading");
+      extractBtn.disabled = false;
+      setTimeout(() => { progressPanel.hidden = true; progressFill.style.width = "0%"; }, 900);
     }
   }
 
-  function setExtractLoading(isLoading) {
-    extractBtn.classList.toggle("is-loading", isLoading);
-    extractBtn.disabled = isLoading;
+  function resolveUrl(href, base) {
+    try { return new URL(href, base).href; } catch (e) { return href; }
   }
 
   /* =======================================================================
-     PARSING
-     ======================================================================= */
-
-  function parseSource(rawHtml, baseUrl) {
-    const doc = new DOMParser().parseFromString(rawHtml, "text/html");
-
-    // CSS: combine all <style> tag contents
-    const css = Array.from(doc.querySelectorAll("style"))
-      .map((s) => s.textContent)
-      .join("\n\n");
-
-    // JS: combine all inline <script> tag contents (skip external ones)
-    const js = Array.from(doc.querySelectorAll("script"))
-      .filter((s) => !s.src)
-      .map((s) => s.textContent)
-      .join("\n\n");
-
-    // Resources: external references
-    const resources = [];
-    const addRes = (type, url) => {
-      if (url) resources.push({ type, url });
-    };
-    doc.querySelectorAll("link[href]").forEach((el) => addRes(el.rel || "link", el.getAttribute("href")));
-    doc.querySelectorAll("script[src]").forEach((el) => addRes("script", el.getAttribute("src")));
-    doc.querySelectorAll("img[src]").forEach((el) => addRes("img", el.getAttribute("src")));
-    doc.querySelectorAll("a[href]").forEach((el) => addRes("a", el.getAttribute("href")));
-
-    return { html: rawHtml, css, js, resources };
-  }
-
-  /* =======================================================================
-     SYNTAX HIGHLIGHTING (vanilla, monochrome)
+     SYNTAX HIGHLIGHTING (vanilla, monochrome-agnostic — themed via CSS)
      ======================================================================= */
 
   function escapeHtml(str) {
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
   function highlightHTML(code) {
     let escaped = escapeHtml(code);
-    // comments
     escaped = escaped.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="tk-comment">$1</span>');
-    // tags + attributes
     escaped = escaped.replace(/(&lt;\/?[a-zA-Z0-9-]+)([^&]*?)(\/?&gt;)/g, (match, open, attrs, close) => {
       const attrHtml = attrs.replace(
         /([a-zA-Z-:]+)(=)("[^"]*"|'[^']*')/g,
@@ -368,55 +482,47 @@
 
   function populateResults(s) {
     codeHtmlEl.innerHTML = s.html ? highlightHTML(s.html) : "";
-    codeCssEl.innerHTML = s.css ? highlightCSS(s.css) : "/* no <style> blocks found */";
-    codeJsEl.innerHTML = s.js ? highlightJS(s.js) : "// no inline scripts found";
+    codeCssEl.innerHTML = s.css ? highlightCSS(s.css) : "/* no stylesheets found */";
+    codeJsEl.innerHTML = s.js ? highlightJS(s.js) : "// no scripts found";
 
-    resourceList.innerHTML = "";
-    if (!s.resources.length) {
-      resourceList.innerHTML = '<li class="resource-empty">No external resources found.</li>';
+    fileTreeEl.innerHTML = "";
+    if (!s.tree.length) {
+      fileTreeEl.innerHTML = '<li class="tree-empty">No assets found.</li>';
     } else {
-      s.resources.forEach((r) => {
+      s.tree.forEach((item) => {
         const li = document.createElement("li");
         const typeSpan = document.createElement("span");
-        typeSpan.className = "res-type";
-        typeSpan.textContent = r.type;
+        typeSpan.className = "tree-type";
+        typeSpan.textContent = item.type;
+        const statusSpan = document.createElement("span");
+        statusSpan.className = `tree-status ${item.status === "ok" ? "ok" : item.status === "fail" ? "fail" : ""}`;
+        statusSpan.textContent = item.status === "ok" ? "fetched" : item.status === "fail" ? "blocked" : "linked";
         const urlSpan = document.createElement("span");
-        urlSpan.className = "res-url";
-        urlSpan.textContent = r.url;
+        urlSpan.className = "tree-url";
+        urlSpan.textContent = item.url;
         li.appendChild(typeSpan);
+        li.appendChild(statusSpan);
         li.appendChild(urlSpan);
-        resourceList.appendChild(li);
+        fileTreeEl.appendChild(li);
       });
     }
 
-    // reset preview until the tab is opened
     previewFrame.removeAttribute("srcdoc");
     previewError.hidden = true;
   }
 
   function revealResults() {
     emptyState.hidden = true;
-    resultsSection.hidden = false;
-    actionBar.querySelectorAll(".btn-3d").forEach((b) => (b.disabled = false));
-
-    // staggered fly-in for the active panel; re-trigger animation
-    const activePanel = document.querySelector(".panel.active");
-    if (activePanel) {
-      activePanel.style.animation = "none";
-      // force reflow
-      void activePanel.offsetWidth;
-      activePanel.style.animation = "";
-    }
+    resultsPanel.hidden = false;
+    actionBar.querySelectorAll("button").forEach((b) => (b.disabled = false));
   }
 
   /* =======================================================================
-     TAB SWITCHING
+     TABS
      ======================================================================= */
 
   const tabs = document.querySelectorAll(".tab");
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => switchTab(tab.dataset.tab));
-  });
+  tabs.forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
 
   function switchTab(name) {
     tabs.forEach((t) => {
@@ -424,7 +530,6 @@
       t.classList.toggle("active", isActive);
       t.setAttribute("aria-selected", String(isActive));
     });
-
     document.querySelectorAll(".panel").forEach((p) => {
       const isActive = p.id === `panel-${name}`;
       p.hidden = !isActive;
@@ -435,35 +540,24 @@
         p.style.animation = "";
       }
     });
-
-    if (name === "preview" && state) {
-      renderPreview();
-    }
+    if (name === "preview" && state) renderPreview();
   }
 
   function renderPreview() {
-    if (!state || !state.html) {
-      previewError.hidden = false;
-      return;
-    }
+    if (!state || !state.html) { previewError.hidden = false; return; }
     previewError.hidden = true;
     previewSpinner.classList.add("active");
 
     let htmlWithBase = state.html;
     if (!/<base[\s>]/i.test(htmlWithBase)) {
       const baseTag = `<base href="${state.url}">`;
-      if (/<head[^>]*>/i.test(htmlWithBase)) {
-        htmlWithBase = htmlWithBase.replace(/<head([^>]*)>/i, `<head$1>${baseTag}`);
-      } else {
-        htmlWithBase = baseTag + htmlWithBase;
-      }
+      htmlWithBase = /<head[^>]*>/i.test(htmlWithBase)
+        ? htmlWithBase.replace(/<head([^>]*)>/i, `<head$1>${baseTag}`)
+        : baseTag + htmlWithBase;
     }
 
     previewFrame.onload = () => previewSpinner.classList.remove("active");
-    previewFrame.onerror = () => {
-      previewSpinner.classList.remove("active");
-      previewError.hidden = false;
-    };
+    previewFrame.onerror = () => { previewSpinner.classList.remove("active"); previewError.hidden = false; };
 
     try {
       previewFrame.srcdoc = htmlWithBase;
@@ -474,7 +568,7 @@
   }
 
   /* =======================================================================
-     COPY TO CLIPBOARD
+     COPY
      ======================================================================= */
 
   document.querySelectorAll(".btn-copy").forEach((btn) => {
@@ -516,31 +610,13 @@
     URL.revokeObjectURL(url);
   }
 
-  function downloadHTML() {
-    if (!state) return;
-    createDownloadFile(state.html, `sourcew-${timestamp()}-source.html`, "text/html");
-  }
-  function downloadCSS() {
-    if (!state) return;
-    createDownloadFile(state.css, `sourcew-${timestamp()}-style.css`, "text/css");
-  }
-  function downloadJS() {
-    if (!state) return;
-    createDownloadFile(state.js, `sourcew-${timestamp()}-script.js`, "application/javascript");
-  }
+  function downloadHTML() { if (state) createDownloadFile(state.html, `sourcew-${timestamp()}-source.html`, "text/html"); }
+  function downloadCSS() { if (state) createDownloadFile(state.css, `sourcew-${timestamp()}-style.css`, "text/css"); }
+  function downloadJS() { if (state) createDownloadFile(state.js, `sourcew-${timestamp()}-script.js`, "application/javascript"); }
 
-  dlHtmlBtn.addEventListener("click", () => {
-    downloadHTML();
-    showToast("Download started");
-  });
-  dlCssBtn.addEventListener("click", () => {
-    downloadCSS();
-    showToast("Download started");
-  });
-  dlJsBtn.addEventListener("click", () => {
-    downloadJS();
-    showToast("Download started");
-  });
+  dlHtmlBtn.addEventListener("click", () => { downloadHTML(); showToast("Download started"); });
+  dlCssBtn.addEventListener("click", () => { downloadCSS(); showToast("Download started"); });
+  dlJsBtn.addEventListener("click", () => { downloadJS(); showToast("Download started"); });
   dlAllBtn.addEventListener("click", () => {
     if (!state) return;
     downloadHTML();
@@ -555,53 +631,41 @@
 
   clearBtn.addEventListener("click", () => {
     if (!state) return;
-
     const panels = document.querySelectorAll(".panel");
     if (!reducedMotion) {
       panels.forEach((p) => {
         p.style.transition = "opacity .3s var(--ease), transform .3s var(--ease)";
         p.style.opacity = "0";
-        p.style.transform = "translateY(-20px)";
+        p.style.transform = "translateY(-16px)";
       });
     }
-
     const finish = () => {
       codeHtmlEl.innerHTML = "";
       codeCssEl.innerHTML = "";
       codeJsEl.innerHTML = "";
-      resourceList.innerHTML = "";
+      fileTreeEl.innerHTML = "";
       previewFrame.removeAttribute("srcdoc");
       previewFrame.onload = null;
 
       urlInput.value = "";
+      urlCheck.classList.remove("visible");
       urlInput.focus();
 
       state = null;
-      resultsSection.hidden = true;
+      resultsPanel.hidden = true;
       emptyState.hidden = false;
 
-      actionBar.querySelectorAll(".btn-3d").forEach((b) => (b.disabled = true));
+      actionBar.querySelectorAll("button").forEach((b) => (b.disabled = true));
 
-      panels.forEach((p) => {
-        p.style.transition = "";
-        p.style.opacity = "";
-        p.style.transform = "";
-      });
-
+      panels.forEach((p) => { p.style.transition = ""; p.style.opacity = ""; p.style.transform = ""; });
       switchTab("html");
 
       const original = clearBtn.textContent;
       clearBtn.textContent = "Cleared!";
       setTimeout(() => (clearBtn.textContent = original), 1000);
-
       showToast("All content cleared");
     };
-
-    if (reducedMotion) {
-      finish();
-    } else {
-      setTimeout(finish, 300);
-    }
+    reducedMotion ? finish() : setTimeout(finish, 300);
   });
 
 })();

@@ -3,192 +3,253 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Source W — Extract Any Website's Source Code</title>
-<meta name="description" content="Source W extracts the complete HTML, CSS and JavaScript source of any website from a single URL.">
+<title>Source W — Extract. Preview. Download. Any Website's Source Code.</title>
+<meta name="description" content="Source W extracts the complete HTML, CSS, JavaScript and assets of any website from a single URL.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- ============ 3D LANDING OVERLAY ============ -->
-<section id="landing" class="landing" aria-label="Intro">
-  <canvas id="particle-canvas" class="particle-canvas" aria-hidden="true"></canvas>
+<!-- ============ NAV ============ -->
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#top" class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Source <strong>W</strong></span>
+    </a>
 
-  <div class="landing-shapes" aria-hidden="true">
-    <div class="shape shape-cube shape-1"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-    <div class="shape shape-pyramid shape-2"><span></span><span></span><span></span><span></span></div>
-    <div class="shape shape-cube shape-3"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-    <div class="shape shape-pyramid shape-4"><span></span><span></span><span></span><span></span></div>
-  </div>
+    <nav class="nav-links" id="navLinks">
+      <a href="#extract">Extract</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#results">Results</a>
+    </nav>
 
-  <div class="landing-content">
-    <div class="logo-3d" id="logo3d" aria-hidden="true">
-      <div class="logo-w">
-        <div class="w-stroke w-stroke-1"></div>
-        <div class="w-stroke w-stroke-2"></div>
-        <div class="w-stroke w-stroke-3"></div>
-        <div class="w-stroke w-stroke-4"></div>
-      </div>
-    </div>
-    <h1 class="landing-title">Source <span>W</span></h1>
-    <p class="landing-tagline" id="tagline">Every line of code, laid bare.</p>
-    <button class="btn-3d btn-3d-primary btn-enter" id="enterBtn" type="button">
-      Enter
+    <button class="btn-glow btn-glow-sm nav-cta" id="navExtractBtn" type="button">Get started</button>
+
+    <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+      <span></span><span></span><span></span>
     </button>
   </div>
+</header>
 
-  <p class="landing-hint" aria-hidden="true">press enter or click to continue</p>
+<div id="top"></div>
+
+<!-- ============ HERO ============ -->
+<section class="hero" aria-label="Intro">
+  <canvas id="hero-canvas" class="hero-canvas" aria-hidden="true"></canvas>
+  <div class="hero-vignette" aria-hidden="true"></div>
+
+  <div class="hero-content">
+    <p class="eyebrow">source extraction, reimagined</p>
+    <h1 class="hero-title">
+      Extract. Preview. Download.<br>
+      <span class="gradient-text">Any website's source code.</span>
+    </h1>
+    <p class="hero-tagline">Paste a URL. Source W pulls the HTML, CSS, JavaScript and assets — and hands you a live preview before you download a single file.</p>
+
+    <div class="hero-actions">
+      <button class="btn-glow btn-glow-primary" id="heroExtractBtn" type="button">Start extracting</button>
+      <button class="btn-ghost" id="preview3dBtn" type="button">
+        <span class="btn-ghost-icon" aria-hidden="true">◈</span> View 3D preview
+      </button>
+    </div>
+  </div>
+
+  <button class="scroll-cue" id="scrollCue" aria-label="Scroll to extract section">
+    <span></span>
+  </button>
 </section>
 
-<!-- ============ MAIN APP ============ -->
-<div id="app" class="app" aria-hidden="true">
+<main>
 
-  <header class="site-header">
-    <div class="container header-inner">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <div class="w-stroke w-stroke-1"></div>
-          <div class="w-stroke w-stroke-2"></div>
-          <div class="w-stroke w-stroke-3"></div>
-          <div class="w-stroke w-stroke-4"></div>
-        </div>
-        <span class="brand-name">Source <strong>W</strong></span>
-      </div>
-      <p class="brand-tagline">extract &middot; preview &middot; download</p>
-    </div>
-  </header>
+  <!-- ============ EXTRACT ============ -->
+  <section class="section" id="extract">
+    <div class="section-inner narrow">
+      <h2 class="section-title reveal">Drop in a URL</h2>
+      <p class="section-sub reveal">Works best on same-origin or CORS-friendly sites. Cross-origin sites may need a proxy — we'll tell you if that happens.</p>
 
-  <main class="container main-content">
-
-    <!-- URL Input -->
-    <section class="input-card card-3d" aria-label="Extract source code">
-      <form id="extractForm" class="input-form" autocomplete="off">
-        <label for="urlInput" class="input-label">Website URL</label>
-        <div class="input-row">
+      <form id="extractForm" class="url-form reveal" autocomplete="off">
+        <div class="url-field glow-border" id="urlField">
+          <span class="url-icon" aria-hidden="true">🔗</span>
           <input
             type="text"
             id="urlInput"
             name="url"
             class="url-input"
-            placeholder="https://example.com"
+            placeholder="Enter website URL..."
             aria-describedby="urlHelp"
             required
           >
-          <button type="submit" class="btn-3d btn-3d-primary btn-extract" id="extractBtn">
-            <span class="btn-label">Extract</span>
-            <span class="btn-spinner" aria-hidden="true"></span>
-          </button>
+          <span class="url-check" id="urlCheck" aria-hidden="true">✓</span>
         </div>
-        <p id="urlHelp" class="input-help">Paste a full URL starting with http:// or https:// &mdash; then press Extract or Ctrl+Enter.</p>
+        <button type="submit" class="btn-glow btn-glow-primary btn-extract" id="extractBtn">
+          <span class="btn-label">Extract</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
       </form>
-    </section>
+      <p id="urlHelp" class="url-help reveal">Starts with http:// or https:// &middot; Ctrl+Enter also works</p>
 
-    <!-- Action Bar -->
-    <section class="action-bar" id="actionBar" aria-label="Download actions">
-      <button class="btn-3d btn-3d-download" id="dlHtml" disabled>Download HTML</button>
-      <button class="btn-3d btn-3d-download" id="dlCss" disabled>Download CSS</button>
-      <button class="btn-3d btn-3d-download" id="dlJs" disabled>Download JS</button>
-      <button class="btn-3d btn-3d-primary btn-3d-all" id="dlAll" disabled>Download All</button>
-      <button class="btn-3d btn-3d-outline" id="clearAll" disabled>Clear All</button>
-    </section>
-
-    <!-- Empty State -->
-    <section class="empty-state" id="emptyState">
-      <div class="empty-icon" aria-hidden="true">
-        <div class="w-stroke w-stroke-1"></div>
-        <div class="w-stroke w-stroke-2"></div>
-        <div class="w-stroke w-stroke-3"></div>
-        <div class="w-stroke w-stroke-4"></div>
+      <!-- Progress -->
+      <div class="progress-panel glow-border" id="progressPanel" hidden>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <p class="progress-label" id="progressLabel">Fetching page&hellip;</p>
       </div>
-      <p>Enter a URL above to extract source code</p>
-    </section>
 
-    <!-- Extraction Scanner Overlay -->
-    <div class="scanner-overlay" id="scannerOverlay" aria-hidden="true">
-      <div class="scanner-beam"></div>
-      <p class="scanner-text">Scanning source&hellip;</p>
+      <!-- Action bar -->
+      <div class="action-bar" id="actionBar">
+        <button class="btn-chip" id="dlHtml" disabled>Download HTML</button>
+        <button class="btn-chip" id="dlCss" disabled>Download CSS</button>
+        <button class="btn-chip" id="dlJs" disabled>Download JS</button>
+        <button class="btn-glow btn-glow-sm" id="dlAll" disabled>Download All</button>
+        <button class="btn-chip btn-chip-outline" id="clearAll" disabled>Clear All</button>
+      </div>
     </div>
+  </section>
 
-    <!-- Results -->
-    <section class="results" id="results" hidden>
-
-      <div class="tabs" role="tablist" aria-label="Source panels">
-        <button class="tab active" role="tab" aria-selected="true" data-tab="html" id="tab-html">HTML</button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="css" id="tab-css">CSS</button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="js" id="tab-js">JS</button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="resources" id="tab-resources">Resources</button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="preview" id="tab-preview">Preview</button>
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="section section-alt" id="how-it-works">
+    <div class="section-inner">
+      <h2 class="section-title reveal">How it works</h2>
+      <div class="steps">
+        <div class="step-card glass reveal">
+          <div class="step-icon icon-cube" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h3>1. Fetch</h3>
+          <p>Source W requests the page and every linked stylesheet and script it can reach.</p>
+        </div>
+        <div class="step-card glass reveal">
+          <div class="step-icon icon-sphere" aria-hidden="true"><span></span><span></span></div>
+          <h3>2. Parse</h3>
+          <p>HTML, CSS and JS are separated, syntax-highlighted, and assets are catalogued into a file tree.</p>
+        </div>
+        <div class="step-card glass reveal">
+          <div class="step-icon icon-prism" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h3>3. Preview & download</h3>
+          <p>Inspect a live sandboxed preview, copy any panel, or download everything as separate files.</p>
+        </div>
       </div>
-
-      <div class="panels">
-
-        <div class="panel active" id="panel-html" role="tabpanel" aria-labelledby="tab-html">
-          <div class="panel-card card-3d">
-            <div class="panel-header">
-              <span class="panel-title">index.html</span>
-              <button class="btn-copy" data-copy="html">Copy</button>
-            </div>
-            <pre class="code-block"><code id="code-html"></code></pre>
-          </div>
-        </div>
-
-        <div class="panel" id="panel-css" role="tabpanel" aria-labelledby="tab-css" hidden>
-          <div class="panel-card card-3d">
-            <div class="panel-header">
-              <span class="panel-title">style.css</span>
-              <button class="btn-copy" data-copy="css">Copy</button>
-            </div>
-            <pre class="code-block"><code id="code-css"></code></pre>
-          </div>
-        </div>
-
-        <div class="panel" id="panel-js" role="tabpanel" aria-labelledby="tab-js" hidden>
-          <div class="panel-card card-3d">
-            <div class="panel-header">
-              <span class="panel-title">script.js</span>
-              <button class="btn-copy" data-copy="js">Copy</button>
-            </div>
-            <pre class="code-block"><code id="code-js"></code></pre>
-          </div>
-        </div>
-
-        <div class="panel" id="panel-resources" role="tabpanel" aria-labelledby="tab-resources" hidden>
-          <div class="panel-card card-3d">
-            <div class="panel-header">
-              <span class="panel-title">External resources</span>
-            </div>
-            <ul class="resource-list" id="resourceList"></ul>
-          </div>
-        </div>
-
-        <div class="panel" id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" hidden>
-          <div class="panel-card card-3d preview-card">
-            <div class="panel-header">
-              <span class="panel-title">Live preview</span>
-            </div>
-            <div class="preview-frame-wrap">
-              <div class="preview-spinner" id="previewSpinner" aria-hidden="true"></div>
-              <iframe id="previewFrame" class="preview-frame" title="Live preview of extracted source" sandbox="allow-same-origin allow-scripts"></iframe>
-              <p class="preview-error" id="previewError" hidden>Preview couldn't render. The extracted HTML may rely on resources that don't load in a sandboxed frame.</p>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-  </main>
-
-  <footer class="site-footer">
-    <div class="container">
-      <p>Source W &mdash; runs entirely in your browser. Nothing is uploaded anywhere.</p>
     </div>
-  </footer>
+  </section>
 
+  <!-- ============ RESULTS ============ -->
+  <section class="section" id="results">
+    <div class="section-inner">
+
+      <div class="empty-state reveal" id="emptyState">
+        <div class="empty-icon" aria-hidden="true"></div>
+        <p>Nothing extracted yet — drop a URL above to get started.</p>
+      </div>
+
+      <div class="results-panel" id="resultsPanel" hidden>
+
+        <div class="tabs" role="tablist" aria-label="Source panels">
+          <button class="tab active" role="tab" aria-selected="true" data-tab="html" id="tab-html">HTML</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="css" id="tab-css">CSS</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="js" id="tab-js">JS</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="tree" id="tab-tree">File tree</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="preview" id="tab-preview">Preview</button>
+        </div>
+
+        <div class="panels">
+
+          <div class="panel active" id="panel-html" role="tabpanel" aria-labelledby="tab-html">
+            <div class="code-window glow-border">
+              <div class="code-header">
+                <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="code-title">index.html</span>
+                <button class="btn-copy" data-copy="html">Copy</button>
+              </div>
+              <pre class="code-block"><code id="code-html"></code></pre>
+            </div>
+          </div>
+
+          <div class="panel" id="panel-css" role="tabpanel" aria-labelledby="tab-css" hidden>
+            <div class="code-window glow-border">
+              <div class="code-header">
+                <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="code-title">style.css</span>
+                <button class="btn-copy" data-copy="css">Copy</button>
+              </div>
+              <pre class="code-block"><code id="code-css"></code></pre>
+            </div>
+          </div>
+
+          <div class="panel" id="panel-js" role="tabpanel" aria-labelledby="tab-js" hidden>
+            <div class="code-window glow-border">
+              <div class="code-header">
+                <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="code-title">script.js</span>
+                <button class="btn-copy" data-copy="js">Copy</button>
+              </div>
+              <pre class="code-block"><code id="code-js"></code></pre>
+            </div>
+          </div>
+
+          <div class="panel" id="panel-tree" role="tabpanel" aria-labelledby="tab-tree" hidden>
+            <div class="code-window glow-border">
+              <div class="code-header">
+                <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="code-title">extracted assets</span>
+              </div>
+              <ul class="file-tree" id="fileTree"></ul>
+            </div>
+          </div>
+
+          <div class="panel" id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" hidden>
+            <div class="preview-window glow-border">
+              <div class="code-header">
+                <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="code-title">live preview</span>
+              </div>
+              <div class="preview-frame-wrap">
+                <div class="preview-spinner" id="previewSpinner" aria-hidden="true"></div>
+                <iframe id="previewFrame" class="preview-frame" title="Live preview of extracted source" sandbox="allow-same-origin allow-scripts"></iframe>
+                <p class="preview-error" id="previewError" hidden>Preview couldn't render. The extracted HTML may rely on resources that don't load in a sandboxed frame.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="section-inner footer-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Source <strong>W</strong></span>
+    </div>
+    <p class="footer-note">Runs entirely in your browser. Nothing you extract is ever uploaded anywhere.</p>
+    <div class="footer-links">
+      <a href="#top">Back to top</a>
+      <a href="#how-it-works">How it works</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ 3D PREVIEW MODAL ============ -->
+<div class="modal" id="previewModal" aria-hidden="true">
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="modal-panel glow-border" role="dialog" aria-modal="true" aria-label="3D preview">
+    <button class="modal-close" id="modalClose" aria-label="Close 3D preview">✕</button>
+    <canvas id="modal-canvas" class="modal-canvas"></canvas>
+    <p class="modal-hint">Drag to rotate</p>
+  </div>
 </div>
 
 <!-- Toast -->
 <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
