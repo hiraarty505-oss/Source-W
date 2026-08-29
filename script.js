@@ -2,14 +2,14 @@
   "use strict";
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = (id) => document.getElementById(id);
-  const $$ = (sel) => [...document.querySelectorAll(sel)];
+  const $$ = (s) => [...document.querySelectorAll(s)];
   const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const state = {
     url: "", html: "", css: "", js: "", resources: [], hasData: false,
-    stats: { htmlSize: 0, cssSize: 0, jsSize: 0, htmlLines: 0, cssLines: 0, jsLines: 0, resourceCount: 0, time: "0" },
+    stats: { html: 0, css: 0, js: 0, res: 0, time: "0" },
     raw: { html: "", css: "", js: "" },
-    formatted: { html: false, css: false, js: false },
+    fmt: { html: false, css: false, js: false },
   };
 
   const PROXIES = [
@@ -18,141 +18,206 @@
     (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
   ];
 
-  let particleId = null, autoEnter = null, installPrompt = null;
+  let animId = null, autoT = null;
 
-  function toast(msg, type) {
+  function toast(msg, err) {
     const t = document.createElement("div");
-    t.className = "toast" + (type === "error" ? " error" : "");
+    t.className = "toast" + (err ? " err" : "");
     t.textContent = msg;
-    $("toastContainer").appendChild(t);
-    while ($("toastContainer").children.length > 3) $("toastContainer").firstChild.remove();
-    setTimeout(() => t.remove(), 3000);
+    $("toasts").appendChild(t);
+    while ($("toasts").children.length > 3) $("toasts").firstChild.remove();
+    setTimeout(() => t.remove(), 3200);
   }
-
   function debounce(fn, ms) {
-    let t;
-    return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+    let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
   }
 
-  /* Landing */
-  function initLanding() {
-    initParticles();
-    typewriter("extract · preview · download", 50);
+  /* Theme */
+  const saved = localStorage.getItem("sw_theme");
+  if (saved) document.documentElement.setAttribute("data-theme", saved);
+  else document.documentElement.setAttribute("data-theme", "dark");
+  $("themeBtn").textContent = document.documentElement.getAttribute("data-theme") === "dark" ? "☀" : "🌙";
+  $("themeBtn").addEventListener("click", () => {
+    const n = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", n);
+    localStorage.setItem("sw_theme", n);
+    $("themeBtn").textContent = n === "dark" ? "☀" : "🌙";
+  });
+
+  /* Offline */
+  function syncOnline() {
+    const on = navigator.onLine;
+    $("offlineBar").classList.toggle("hidden", on);
+    $("extractBtn").disabled = !on;
+  }
+  addEventListener("online", syncOnline);
+  addEventListener("offline", syncOnline);
+  $("offlineX").addEventListener("click", () => $("offlineBar").classList.add("hidden"));
+  syncOnline();
+
+  /* Landing — canvas particle network + code fragments */
+  function initHero() {
+    const canvas = $("heroCanvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const mouse = { x: -1e3, y: -1e3 };
+    let parts = [], frags = [];
+    const labels = ["<div>", "</div>", "{", "}", "const", "=>", "class", "#id", ".cls", "() =>", "async", "html", "css", "js"];
+
+    function resize() {
+      canvas.width = innerWidth;
+      canvas.height = innerHeight;
+    }
+    resize();
+    addEventListener("resize", resize);
+    addEventListener("mousemove", (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+    const N = reduced ? 40 : Math.min(90, Math.floor((innerWidth * innerHeight) / 14000));
+    for (let i = 0; i < N; i++) {
+      parts.push({
+        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+        r: Math.random() * 1.8 + 0.4, o: Math.random() * 0.5 + 0.15,
+      });
+    }
+    if (!reduced) {
+      for (let i = 0; i < 12; i++) {
+        frags.push({
+          x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25,
+          text: labels[i % labels.length], o: 0.12 + Math.random() * 0.2,
+          size: 11 + Math.random() * 6,
+        });
+      }
+    }
+
+    (function loop() {
+      if ($("landing").classList.contains("exit") || $("landing").style.display === "none") return;
+      animId = requestAnimationFrame(loop);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // parallax offset
+      const px = (mouse.x / canvas.width - 0.5) * 20;
+      const py = (mouse.y / canvas.height - 0.5) * 14;
+
+      for (const p of parts) {
+        const dx = p.x - mouse.x, dy = p.y - mouse.y, d = Math.hypot(dx, dy);
+        if (d < 140 && d > 0) { const f = (140 - d) / 140; p.vx += (dx / d) * f * 0.35; p.vy += (dy / d) * f * 0.35; }
+        p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.vy *= 0.99;
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+        ctx.beginPath();
+        ctx.arc(p.x + px * 0.3, p.y + py * 0.3, p.r, 0, 6.28);
+        ctx.fillStyle = `rgba(167,139,250,${p.o})`;
+        ctx.fill();
+      }
+      for (let i = 0; i < parts.length; i++) {
+        for (let j = i + 1; j < parts.length; j++) {
+          const a = parts[i], b = parts[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (d < 100) {
+            ctx.beginPath();
+            ctx.moveTo(a.x + px * 0.3, a.y + py * 0.3);
+            ctx.lineTo(b.x + px * 0.3, b.y + py * 0.3);
+            ctx.strokeStyle = `rgba(59,130,246,${0.12 * (1 - d / 100)})`;
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.font = "12px ui-monospace, monospace";
+      for (const f of frags) {
+        f.x += f.vx; f.y += f.vy;
+        if (f.x < 0 || f.x > canvas.width) f.vx *= -1;
+        if (f.y < 0 || f.y > canvas.height) f.vy *= -1;
+        ctx.globalAlpha = f.o;
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = `${f.size}px ui-monospace, monospace`;
+        ctx.fillText(f.text, f.x + px * 0.5, f.y + py * 0.5);
+        ctx.globalAlpha = 1;
+      }
+    })();
+
+    // typewriter
+    typeText($("heroTitle"), "Source W", 55);
+    setTimeout(() => typeText($("heroSub"), "Extract · Preview · Download", 35, true), 600);
+
     $("enterBtn").addEventListener("click", enterApp);
-    if (!reduced) autoEnter = setTimeout(() => { if (!$("landing").classList.contains("exiting")) enterApp(); }, 5000);
+    if (!reduced) autoT = setTimeout(() => { if (!$("landing").classList.contains("exit")) enterApp(); }, 5000);
+
+    // magnetic button
+    if (!reduced) {
+      const btn = $("enterBtn");
+      btn.addEventListener("mousemove", (e) => {
+        const r = btn.getBoundingClientRect();
+        const x = e.clientX - r.left - r.width / 2;
+        const y = e.clientY - r.top - r.height / 2;
+        btn.style.transform = `translate(${x * 0.15}px, ${y * 0.2}px) scale(1.04)`;
+      });
+      btn.addEventListener("mouseleave", () => { btn.style.transform = ""; });
+    }
+  }
+
+  function typeText(el, text, speed, glow) {
+    if (!el) return;
+    el.textContent = "";
+    if (reduced) {
+      el.textContent = text;
+      if (glow) el.innerHTML = text.split(" · ").map((s) => `<span class="glow">${s}</span>`).join(" · ");
+      return;
+    }
+    let i = 0;
+    (function tick() {
+      if (i < text.length) {
+        el.textContent += text[i++];
+        setTimeout(tick, speed);
+      } else if (glow) {
+        el.innerHTML = text.split(" · ").map((s) => `<span class="glow">${s}</span>`).join(" · ");
+      }
+    })();
   }
 
   function enterApp() {
-    if ($("landing").classList.contains("exiting")) return;
-    if (autoEnter) clearTimeout(autoEnter);
-    if (particleId) cancelAnimationFrame(particleId);
-    $("landing").classList.add("exiting");
+    if ($("landing").classList.contains("exit")) return;
+    if (autoT) clearTimeout(autoT);
+    if (animId) cancelAnimationFrame(animId);
+    $("landing").classList.add("exit");
     setTimeout(() => {
       $("landing").style.display = "none";
       $("mainApp").classList.remove("hidden");
       void $("mainApp").offsetWidth;
       $("mainApp").classList.add("visible");
-      setTimeout(() => $("urlInput").focus(), 300);
-    }, reduced ? 0 : 800);
+      setTimeout(() => $("urlInput").focus(), 280);
+    }, reduced ? 0 : 850);
   }
 
-  function typewriter(text, speed) {
-    const el = $("tagline");
-    let i = 0;
-    el.textContent = "";
-    if (reduced) { el.textContent = text; return; }
-    (function tick() {
-      if (i < text.length) { el.textContent += text[i++]; setTimeout(tick, speed); }
-      else { const c = document.createElement("span"); c.className = "cursor"; el.appendChild(c); }
-    })();
+  /* Input validation + history */
+  function normalize(v) {
+    v = (v || "").trim();
+    if (!v) return "";
+    if (!/^https?:\/\//i.test(v)) v = "https://" + v.replace(/^\/+/, "");
+    return v;
   }
-
-  function initParticles() {
-    const canvas = $("particle-canvas");
-    if (!canvas || reduced) return;
-    const ctx = canvas.getContext("2d");
-    const mouse = { x: -1e3, y: -1e3 };
-    let parts = [];
-    const N = Math.min(150, Math.floor((innerWidth * innerHeight) / 10000));
-    function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
-    resize();
-    addEventListener("resize", resize);
-    addEventListener("mousemove", (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-    for (let i = 0; i < N; i++) {
-      parts.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, s: Math.random() * 2 + 0.4, o: Math.random() * 0.45 + 0.15 });
-    }
-    (function loop() {
-      if ($("landing").classList.contains("exiting") || $("landing").style.display === "none") return;
-      particleId = requestAnimationFrame(loop);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (const p of parts) {
-        const dx = p.x - mouse.x, dy = p.y - mouse.y, d = Math.hypot(dx, dy);
-        if (d < 120 && d > 0) { const f = (120 - d) / 120; p.vx += (dx / d) * f * 0.5; p.vy += (dy / d) * f * 0.5; }
-        p.x += p.vx; p.y += p.vy; p.vx *= 0.98; p.vy *= 0.98;
-        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 6.28);
-        ctx.fillStyle = `rgba(255,255,255,${p.o})`; ctx.fill();
-      }
-      for (let i = 0; i < parts.length; i++) {
-        for (let j = i + 1; j < parts.length; j++) {
-          const a = parts[i], b = parts[j], d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (d < 110) {
-            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `rgba(255,255,255,${0.12 * (1 - d / 110)})`; ctx.lineWidth = 0.5; ctx.stroke();
-          }
-        }
-      }
-    })();
-  }
-
-  /* Tilt */
-  function initTilt() {
-    if (reduced) return;
-    $$(".card-3d").forEach((card) => {
-      if (card.dataset.t) return;
-      card.dataset.t = "1";
-      card.addEventListener("mousemove", (e) => {
-        const r = card.getBoundingClientRect();
-        const x = e.clientX - r.left, y = e.clientY - r.top;
-        const rx = Math.max(-10, Math.min(10, ((r.height / 2 - y) / (r.height / 2)) * 10));
-        const ry = Math.max(-10, Math.min(10, ((x - r.width / 2) / (r.width / 2)) * 10));
-        card.style.transform = `perspective(1000px) rotateX(${rx}deg) rotateY(${ry}deg)`;
-      });
-      card.addEventListener("mouseleave", () => {
-        card.style.transition = "transform .4s ease";
-        card.style.transform = "";
-        setTimeout(() => { card.style.transition = ""; }, 400);
-      });
-    });
-  }
-
-  /* URL validation + history */
-  const validateUrl = debounce(() => {
+  const validate = debounce(() => {
     const v = $("urlInput").value.trim();
-    const inp = $("urlInput");
-    const val = $("inputValidation");
-    inp.classList.remove("valid", "invalid");
-    if (!v) { val.textContent = ""; return; }
-    const ok = /^https?:\/\/.+\..+/i.test(v.startsWith("http") ? v : "https://" + v);
-    inp.classList.add(ok ? "valid" : "invalid");
-    val.textContent = ok ? "✓ Ready" : "Invalid URL";
-  }, 300);
-  $("urlInput").addEventListener("input", validateUrl);
-  $("urlInput").addEventListener("focus", () => { renderHistory(); $("historyDropdown").classList.remove("hidden"); });
-  $("urlInput").addEventListener("blur", () => setTimeout(() => $("historyDropdown").classList.add("hidden"), 200));
+    const ok = v && /^https?:\/\/.+\..+/i.test(normalize(v));
+    $("readyBadge").classList.toggle("hidden", !ok);
+  }, 280);
+  $("urlInput").addEventListener("input", validate);
+  $("urlInput").addEventListener("focus", () => {
+    renderHistory();
+    $("historyPanel").classList.remove("hidden");
+  });
+  $("urlInput").addEventListener("blur", () => setTimeout(() => $("historyPanel").classList.add("hidden"), 180));
 
-  function getHistory() {
-    try { return JSON.parse(localStorage.getItem("sw_history") || "[]"); } catch { return []; }
-  }
-  function saveHistory(url) {
-    let h = getHistory().filter((x) => x.url !== url);
+  function getHist() { try { return JSON.parse(localStorage.getItem("sw_hist") || "[]"); } catch { return []; } }
+  function saveHist(url) {
+    let h = getHist().filter((x) => x.url !== url);
     let domain = url;
     try { domain = new URL(url).hostname; } catch {}
     h.unshift({ url, domain, ts: Date.now() });
-    localStorage.setItem("sw_history", JSON.stringify(h.slice(0, 10)));
+    localStorage.setItem("sw_hist", JSON.stringify(h.slice(0, 12)));
   }
-  function timeAgo(ts) {
+  function ago(ts) {
     const s = Math.floor((Date.now() - ts) / 1000);
     if (s < 60) return "just now";
     if (s < 3600) return Math.floor(s / 60) + " min ago";
@@ -160,127 +225,72 @@
     return Math.floor(s / 86400) + "d ago";
   }
   function renderHistory() {
-    const h = getHistory();
-    const dd = $("historyDropdown");
-    if (!h.length) { dd.innerHTML = ""; dd.classList.add("hidden"); return; }
-    dd.innerHTML = h.map((x) =>
-      `<button type="button" data-url="${x.url.replace(/"/g, "&quot;")}"><span class="h-dom">${x.domain}</span><span class="h-time">${timeAgo(x.ts)}</span></button>`
+    const h = getHist();
+    const p = $("historyPanel");
+    if (!h.length) { p.innerHTML = ""; p.classList.add("hidden"); return; }
+    p.innerHTML = h.map((x) =>
+      `<button type="button" data-u="${x.url.replace(/"/g, "&quot;")}"><span class="h-dom">${x.domain}</span><span class="h-time">${ago(x.ts)}</span></button>`
     ).join("") + `<button type="button" class="h-clear" data-clear="1">Clear history</button>`;
-    dd.querySelectorAll("button").forEach((b) => {
+    p.querySelectorAll("button").forEach((b) => {
       b.addEventListener("mousedown", (e) => {
         e.preventDefault();
-        if (b.dataset.clear) { localStorage.removeItem("sw_history"); dd.innerHTML = ""; return; }
-        $("urlInput").value = b.dataset.url;
-        validateUrl();
-        dd.classList.add("hidden");
-        handleExtract();
+        if (b.dataset.clear) { localStorage.removeItem("sw_hist"); p.innerHTML = ""; return; }
+        $("urlInput").value = b.dataset.u;
+        validate();
+        p.classList.add("hidden");
+        extract();
       });
     });
   }
 
+  /* Card tilt */
+  function bindTilt() {
+    if (reduced) return;
+    $$(".tilt").forEach((el) => {
+      if (el.dataset.t) return;
+      el.dataset.t = "1";
+      el.addEventListener("mousemove", (e) => {
+        const r = el.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        el.style.transform = `perspective(900px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg)`;
+      });
+      el.addEventListener("mouseleave", () => { el.style.transform = ""; });
+    });
+  }
+
   /* Extract */
-  function setLoading(on) {
-    $("extractBtn").querySelector(".btn-text").classList.toggle("hidden", on);
-    $("extractBtn").querySelector(".btn-loader").classList.toggle("hidden", !on);
+  function setLoad(on) {
+    $("extractBtn").querySelector(".btn-label").classList.toggle("hidden", on);
+    $("extractBtn").querySelector(".btn-loading").classList.toggle("hidden", !on);
     $("extractBtn").disabled = on || !navigator.onLine;
   }
-  function showExtract(on) {
-    const ov = $("extractOverlay");
-    ov.classList.toggle("hidden", !on);
-    ov.classList.toggle("on", on);
-    if (on) {
-      const ds = $("dataStreams");
-      ds.innerHTML = "";
-      for (let i = 0; i < 10; i++) ds.appendChild(Object.assign(document.createElement("div"), { className: "stream" }));
-      if (!reduced) $("inputCard").classList.add("deconstruct");
-      setProgress(0);
-    } else {
-      $("inputCard").classList.remove("deconstruct");
-      $("inputCard").style.transform = "";
-    }
+  function showOv(on) {
+    $("extractOv").classList.toggle("hidden", !on);
+    if (on) { $("progressBar").style.width = "0%"; $("statusText").textContent = "Connecting…"; }
   }
-  function setStatus(t) { $("statusText").textContent = t; }
-  function setProgress(p) { $("progressFill").style.width = p + "%"; }
+  function setProg(p) { $("progressBar").style.width = p + "%"; }
 
-  function normalizeUrl(v) {
-    v = (v || "").trim();
-    if (!v) return "";
-    if (!/^https?:\/\//i.test(v)) v = "https://" + v.replace(/^\/+/, "");
-    return v;
-  }
-
-  async function handleExtract() {
-    if (!navigator.onLine) { toast("You are offline", "error"); return; }
-    let url = normalizeUrl($("urlInput").value);
-    if (!url || !/^https?:\/\/.+\..+/i.test(url)) {
-      toast("Please enter a valid URL starting with http:// or https://", "error");
-      $("urlInput").focus();
-      return;
-    }
-    state.url = url;
-    $("urlInput").value = url;
-    setLoading(true);
-    showExtract(true);
-    setStatus("Connecting...");
-    setProgress(10);
-    const startTime = Date.now();
+  async function fetchHTML(url) {
     try {
-      let raw = "";
+      const r = await fetch(url, { mode: "cors", headers: { Accept: "text/html" }, signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const t = await r.text();
+        if (t.length > 80 && /html|DOCTYPE|body/i.test(t)) return t;
+      }
+    } catch (_) {}
+    for (const p of PROXIES) {
       try {
-        const r = await fetch(url, { mode: "cors", headers: { Accept: "text/html" }, signal: AbortSignal.timeout(10000) });
-        if (r.ok) raw = await r.text();
-      } catch (_) {}
-      setProgress(30);
-      setStatus("Fetching...");
-      if (!raw || raw.length < 100) {
-        for (const p of PROXIES) {
-          try {
-            const r = await fetch(p(url), { signal: AbortSignal.timeout(8000) });
-            if (r.ok) {
-              const t = await r.text();
-              if (t.length > 100 && (t.includes("<html") || t.includes("<!DOCTYPE") || t.includes("<HTML") || t.includes("<body"))) {
-                raw = t;
-                break;
-              }
-            }
-          } catch (_) {}
+        const r = await fetch(p(url), { signal: AbortSignal.timeout(8000) });
+        if (r.ok) {
+          const t = await r.text();
+          if (t.length > 80 && /html|DOCTYPE|body/i.test(t)) return t;
         }
-      }
-      setProgress(60);
-      setStatus("Parsing...");
-      if (!raw || raw.length < 50) throw new Error("ALL_PROXIES_FAILED");
-      parseCode(raw, url);
-      if (!state.html || state.html.length < 50) throw new Error("PARSE");
-      state.stats.time = ((Date.now() - startTime) / 1000).toFixed(1);
-      state.hasData = true;
-      saveHistory(url);
-      setProgress(100);
-      setStatus("Done!");
-      await delay(300);
-      showExtract(false);
-      setLoading(false);
-      showResults();
-      toast("Extraction complete!", "success");
-    } catch (err) {
-      showExtract(false);
-      setLoading(false);
-      if (err.message === "ALL_PROXIES_FAILED") {
-        toast("CORS blocked. Try manual paste.", "error");
-        showManual();
-      } else if (err.message === "PARSE") {
-        toast("Failed to parse. Response may not be HTML.", "error");
-      } else {
-        toast("Failed: " + (err.message || "unknown"), "error");
-      }
+      } catch (_) {}
     }
+    throw new Error("CORS");
   }
 
-  $("extractBtn").addEventListener("click", handleExtract);
-  $("urlInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleExtract(); }
-  });
-
-  /* Parse */
   function resolve(rel, base) {
     if (!rel) return "";
     rel = rel.trim();
@@ -296,155 +306,195 @@
     }
   }
 
-  function parseCode(raw, base) {
-    state.html = raw;
-    state.raw.html = raw;
+  function parse(raw, base) {
+    state.html = raw; state.raw.html = raw;
     const styles = [], scripts = [];
     let m;
-    const sRe = /<style[^>]*>([\s\S]*?)<\/style>/gi;
-    while ((m = sRe.exec(raw)) !== null) styles.push(m[1].trim());
+    const sr = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+    while ((m = sr.exec(raw)) !== null) styles.push(m[1].trim());
     state.css = styles.map((s, i) => `/* Style ${i + 1} */\n${s}`).join("\n\n") || "/* no inline styles */";
     state.raw.css = state.css;
-    const jRe = /<script(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)<\/script>/gi;
-    while ((m = jRe.exec(raw)) !== null) scripts.push(m[1].trim());
+    const jr = /<script(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)<\/script>/gi;
+    while ((m = jr.exec(raw)) !== null) scripts.push(m[1].trim());
     state.js = scripts.map((s, i) => `/* Script ${i + 1} */\n${s}`).join("\n\n") || "/* no inline scripts */";
     state.raw.js = state.js;
     state.resources = [];
-    const lRe = /<link[^>]*href=["']([^"']+)["'][^>]*>/gi;
-    while ((m = lRe.exec(raw)) !== null) state.resources.push({ type: "css", url: resolve(m[1], base), orig: m[1] });
-    const eRe = /<script[^>]*src=["']([^"']+)["'][^>]*>/gi;
-    while ((m = eRe.exec(raw)) !== null) state.resources.push({ type: "js", url: resolve(m[1], base), orig: m[1] });
-    const iRe = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi;
-    while ((m = iRe.exec(raw)) !== null) state.resources.push({ type: "img", url: resolve(m[1], base), orig: m[1] });
-    const aRe = /<a[^>]*href=["']([^"']+)["'][^>]*>/gi;
-    const seen = new Set();
-    while ((m = aRe.exec(raw)) !== null) {
-      const h = m[1];
-      if ((h.startsWith("http") || h.startsWith("//")) && !seen.has(h)) {
-        seen.add(h);
-        state.resources.push({ type: "link", url: resolve(h, base), orig: h });
-      }
-    }
+    const push = (type, url) => { if (url) state.resources.push({ type, url }); };
     const tm = raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    if (tm) state.resources.unshift({ type: "meta", url: "Title: " + tm[1].trim(), orig: "" });
+    if (tm) push("meta", "Title: " + tm[1].trim().slice(0, 100));
+    const lr = /<link[^>]*href=["']([^"']+)["'][^>]*>/gi;
+    while ((m = lr.exec(raw)) !== null) push("css", resolve(m[1], base));
+    const er = /<script[^>]*src=["']([^"']+)["'][^>]*>/gi;
+    while ((m = er.exec(raw)) !== null) push("js", resolve(m[1], base));
+    const ir = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi;
+    while ((m = ir.exec(raw)) !== null) push("img", resolve(m[1], base));
+    const seen = new Set();
+    const ar = /<a[^>]*href=["']([^"']+)["'][^>]*>/gi;
+    while ((m = ar.exec(raw)) !== null) {
+      const h = m[1];
+      if (!h.startsWith("http") && !h.startsWith("//")) continue;
+      const abs = resolve(h, base);
+      if (seen.has(abs)) continue;
+      seen.add(abs); push("link", abs);
+    }
     state.stats = {
-      htmlSize: new Blob([state.html]).size,
-      cssSize: new Blob([state.css]).size,
-      jsSize: new Blob([state.js]).size,
-      htmlLines: state.html.split("\n").length,
-      cssLines: state.css.split("\n").length,
-      jsLines: state.js.split("\n").length,
-      resourceCount: state.resources.length,
-      time: state.stats.time || "0",
+      html: new Blob([state.html]).size,
+      css: new Blob([state.css]).size,
+      js: new Blob([state.js]).size,
+      res: state.resources.length,
+      time: state.stats.time,
     };
-    state.formatted = { html: false, css: false, js: false };
+    state.fmt = { html: false, css: false, js: false };
   }
 
-  function fmtBytes(str) {
-    const b = new Blob([str || ""]).size;
-    if (b < 1024) return b + " B";
-    if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
-    return (b / 1048576).toFixed(2) + " MB";
+  function bytes(n) {
+    if (n < 1024) return n + " B";
+    if (n < 1048576) return (n / 1024).toFixed(1) + " KB";
+    return (n / 1048576).toFixed(2) + " MB";
   }
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  function highlightHTML(code) {
-    code = code.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="token-comment">$1</span>');
-    code = code.replace(/(&lt;\/?[a-zA-Z][\w\-]*)(.*?)(\/?&gt;)/g, (m, tag, attrs, end) => {
-      const ha = attrs.replace(/([\w\-:]+)=(&quot;.*?&quot;|&#39;.*?&#39;|"[^"]*"|'[^']*')/g, '<span class="token-attr">$1</span>=<span class="token-string">$2</span>');
-      return `<span class="token-tag">${tag}</span>${ha}<span class="token-tag">${end}</span>`;
+  function hiHTML(c) {
+    c = esc(c);
+    c = c.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="tok-cmt">$1</span>');
+    c = c.replace(/(&lt;\/?[a-zA-Z][\w\-]*)(.*?)(\/?&gt;)/g, (m, t, a, e) => {
+      const ha = a.replace(/([\w\-:]+)=(&quot;.*?&quot;|&#39;.*?&#39;|"[^"]*"|'[^']*')/g, '<span class="tok-attr">$1</span>=<span class="tok-str">$2</span>');
+      return `<span class="tok-tag">${t}</span>${ha}<span class="tok-tag">${e}</span>`;
     });
-    return code;
+    return c;
   }
-  function highlightCSS(code) {
-    code = code.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="token-comment">$1</span>');
-    code = code.replace(/([^{}/]+)(\{)/g, '<span class="token-selector">$1</span>$2');
-    return code.replace(/([a-zA-Z\-]+)\s*:\s*([^;{}]+);/g, '<span class="token-property">$1</span>: <span class="token-value">$2</span>;');
+  function hiCSS(c) {
+    c = esc(c);
+    c = c.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="tok-cmt">$1</span>');
+    c = c.replace(/([^{}/]+)(\{)/g, '<span class="tok-sel">$1</span>$2');
+    return c.replace(/([a-zA-Z\-]+)\s*:\s*([^;{}]+);/g, '<span class="tok-prop">$1</span>: <span class="tok-val">$2</span>;');
   }
-  function highlightJS(code) {
-    code = code.replace(/(\/\/[^\n]*)/g, '<span class="token-comment">$1</span>');
-    code = code.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="token-comment">$1</span>');
-    code = code.replace(/(&quot;.*?&quot;|&#39;.*?&#39;|`[^`]*`)/g, '<span class="token-string">$1</span>');
-    code = code.replace(/\b(const|let|var|function|return|if|else|for|while|class|import|export|default|async|await|new|this|try|catch|throw)\b/g, '<span class="token-keyword">$1</span>');
-    code = code.replace(/\b([a-zA-Z_$][\w$]*)\s*\(/g, '<span class="token-function">$1</span>(');
-    return code.replace(/\b(\d+)\b/g, '<span class="token-number">$1</span>');
-  }
-
-  function updateLines(codeId, lineId) {
-    const lines = Math.max(($(codeId).textContent || "").split("\n").length, 1);
-    $(lineId).innerHTML = Array.from({ length: lines }, (_, i) => `<span>${i + 1}</span>`).join("");
+  function hiJS(c) {
+    c = esc(c);
+    c = c.replace(/(\/\/[^\n]*)/g, '<span class="tok-cmt">$1</span>');
+    c = c.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="tok-cmt">$1</span>');
+    c = c.replace(/(&quot;.*?&quot;|&#39;.*?&#39;|`[^`]*`)/g, '<span class="tok-str">$1</span>');
+    c = c.replace(/\b(const|let|var|function|return|if|else|for|while|class|import|export|default|async|await|new|this|try|catch|throw)\b/g, '<span class="tok-kw">$1</span>');
+    c = c.replace(/\b([a-zA-Z_$][\w$]*)\s*\(/g, '<span class="tok-fn">$1</span>(');
+    return c.replace(/\b(\d+)\b/g, '<span class="tok-num">$1</span>');
   }
 
-  function updatePanels() {
-    const max = 300000;
-    const trunc = (s) => (s.length > max ? s.slice(0, max) + "\n\n/* truncated */" : s);
-    $("htmlCode").innerHTML = highlightHTML(esc(trunc(state.html)));
-    $("cssCode").innerHTML = highlightCSS(esc(trunc(state.css)));
-    $("jsCode").innerHTML = highlightJS(esc(trunc(state.js)));
-    updateLines("htmlCode", "htmlLineNumbers");
-    updateLines("cssCode", "cssLineNumbers");
-    updateLines("jsCode", "jsLineNumbers");
-    $("htmlSize").textContent = fmtBytes(state.html);
-    $("cssSize").textContent = fmtBytes(state.css);
-    $("jsSize").textContent = fmtBytes(state.js);
-    $("htmlLines").textContent = state.stats.htmlLines.toLocaleString() + " lines";
-    $("cssLines").textContent = state.stats.cssLines.toLocaleString() + " lines";
-    $("jsLines").textContent = state.stats.jsLines.toLocaleString() + " lines";
-    $("statHtml").textContent = fmtBytes(state.html);
-    $("statCss").textContent = fmtBytes(state.css);
-    $("statJs").textContent = fmtBytes(state.js);
-    $("statRes").textContent = state.stats.resourceCount;
-    $("statTime").textContent = state.stats.time + "s";
-    const rl = $("resourceList");
-    if (state.resources.length) {
-      const groups = {};
-      state.resources.forEach((r) => { (groups[r.type] = groups[r.type] || []).push(r); });
-      rl.innerHTML = Object.entries(groups).map(([type, items]) =>
-        `<li class="resource-group"><div class="resource-group-title">${type.toUpperCase()} <span class="resource-group-count">${items.length}</span></div>` +
-        items.map((r) => r.url.startsWith("http")
-          ? `<li><span class="res-type">${r.type}</span><a href="${esc(r.url)}" target="_blank" rel="noopener" class="res-url">${esc(r.url)}</a></li>`
-          : `<li><span class="res-type">${r.type}</span><span class="res-url">${esc(r.url)}</span></li>`
-        ).join("") + "</li>"
-      ).join("");
+  function lines(codeId, gutId) {
+    const n = Math.max(($(codeId).textContent || "").split("\n").length, 1);
+    $(gutId).innerHTML = Array.from({ length: n }, (_, i) => i + 1).join("<br>");
+  }
+
+  function updateUI() {
+    const max = 280000;
+    const tr = (s) => (s.length > max ? s.slice(0, max) + "\n\n/* truncated */" : s);
+    $("htmlCode").innerHTML = hiHTML(tr(state.html));
+    $("cssCode").innerHTML = hiCSS(tr(state.css));
+    $("jsCode").innerHTML = hiJS(tr(state.js));
+    lines("htmlCode", "htmlGutter");
+    lines("cssCode", "cssGutter");
+    lines("jsCode", "jsGutter");
+    $("htmlSize").textContent = bytes(state.stats.html);
+    $("cssSize").textContent = bytes(state.stats.css);
+    $("jsSize").textContent = bytes(state.stats.js);
+    $("htmlLines").textContent = state.html.split("\n").length.toLocaleString() + " lines";
+    $("cssLines").textContent = state.css.split("\n").length.toLocaleString() + " lines";
+    $("jsLines").textContent = state.js.split("\n").length.toLocaleString() + " lines";
+
+    $("stats").innerHTML = [
+      ["📄", bytes(state.stats.html), "HTML"],
+      ["🎨", bytes(state.stats.css), "CSS"],
+      ["⚡", bytes(state.stats.js), "JS"],
+      ["🔗", state.stats.res, "Resources"],
+    ].map(([i, v, l]) => `<div class="stat"><span class="si">${i}</span><span class="sv">${v}</span><span class="sl">${l}</span></div>`).join("");
+
+    $("timeVal").textContent = state.stats.time + "s";
+    $("timePill").classList.remove("hidden");
+
+    const list = $("resList");
+    if (!state.resources.length) {
+      list.innerHTML = '<p class="res-empty">No resources found.</p>';
     } else {
-      rl.innerHTML = '<li class="resource-empty">No resources found. Extract a URL to see external assets.</li>';
+      const g = {};
+      state.resources.forEach((r) => { (g[r.type] = g[r.type] || []).push(r); });
+      list.innerHTML = Object.entries(g).map(([type, items]) =>
+        `<details class="res-g" open><summary>${type.toUpperCase()} <span class="res-badge">${items.length}</span></summary>` +
+        items.map((r) => r.url.startsWith("http")
+          ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a>`
+          : `<a style="pointer-events:none;opacity:.75">${esc(r.url)}</a>`
+        ).join("") + "</details>"
+      ).join("");
     }
-    $("resCount").textContent = state.stats.resourceCount + " found";
+    $("resCount").textContent = state.stats.res + " found";
   }
 
   function showResults() {
-    $("actionBar").classList.remove("hidden");
-    $("resultsSection").classList.remove("hidden");
-    $("statsBar").classList.remove("hidden");
     $("emptyState").classList.add("hidden");
-    updatePanels();
-    $$(".tab-panel").forEach((p, i) => {
-      p.classList.remove("fly-in");
-      if (!reduced) setTimeout(() => { if (p.classList.contains("active")) p.classList.add("fly-in"); }, i * 120);
-    });
-    setTimeout(initTilt, 100);
+    $("results").classList.remove("hidden");
+    updateUI();
+    bindTilt();
   }
 
+  async function extract() {
+    if (!navigator.onLine) { toast("You are offline", true); return; }
+    const url = normalize($("urlInput").value);
+    if (!/^https?:\/\/.+\..+/i.test(url)) {
+      toast("Enter a valid URL with http:// or https://", true);
+      $("urlInput").focus();
+      return;
+    }
+    state.url = url;
+    $("urlInput").value = url;
+    setLoad(true);
+    showOv(true);
+    const t0 = performance.now();
+    try {
+      setProg(15);
+      $("statusText").textContent = "Fetching…";
+      const raw = await fetchHTML(url);
+      setProg(65);
+      $("statusText").textContent = "Parsing…";
+      await delay(reduced ? 0 : 200);
+      parse(raw, url);
+      state.stats.time = ((performance.now() - t0) / 1000).toFixed(1);
+      state.hasData = true;
+      saveHist(url);
+      setProg(100);
+      $("statusText").textContent = "Done";
+      await delay(200);
+      showOv(false);
+      setLoad(false);
+      showResults();
+      toast("Extraction complete");
+    } catch (e) {
+      showOv(false);
+      setLoad(false);
+      if (e.message === "CORS") {
+        toast("CORS blocked — try pasting source manually", true);
+        openManual();
+      } else toast("Extraction failed: " + (e.message || "error"), true);
+    }
+  }
+
+  $("extractBtn").addEventListener("click", extract);
+  $("urlInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); extract(); }
+  });
+
   /* Tabs */
-  $$(".tab-btn").forEach((btn) => {
+  $$(".tab").forEach((btn) => {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.tab;
-      $$(".tab-btn").forEach((b) => {
+      $$(".tab").forEach((b) => {
         const on = b === btn;
         b.classList.toggle("active", on);
         b.setAttribute("aria-selected", on);
       });
-      $$(".tab-panel").forEach((p) => {
+      $$(".panel").forEach((p) => {
         const on = p.id === "panel-" + tab;
         p.classList.toggle("active", on);
         p.hidden = !on;
-        if (on && !reduced) {
-          p.classList.remove("fly-in");
-          void p.offsetWidth;
-          p.classList.add("fly-in");
-        }
       });
       if (tab === "preview") loadPreview();
     });
@@ -452,231 +502,173 @@
 
   function loadPreview() {
     if (!state.html) return;
-    $("previewLoader").classList.remove("hidden");
-    $("previewError").classList.add("hidden");
-    let html = state.html;
-    html = html.replace(/<script[\s\S]*?<\/script>/gi, "<!-- script removed -->");
-    html = html.replace(/javascript:[^"'>\s]*/gi, "#");
-    html = html.replace(/\son\w+=["'][^"']*["']/gi, "");
-    html = html.replace(/<iframe[\s\S]*?<\/iframe>/gi, "<!-- iframe removed -->");
-    if (!/<base[\s>]/i.test(html) && state.url) {
+    $("previewLoad").classList.remove("hidden");
+    $("previewErr").classList.add("hidden");
+    let html = state.html
+      .replace(/<script[\s\S]*?<\/script>/gi, "<!-- removed -->")
+      .replace(/javascript:[^"'>\s]*/gi, "#")
+      .replace(/\son\w+=["'][^"']*["']/gi, "");
+    if (state.url && !/<base[\s>]/i.test(html)) {
       html = /<head[^>]*>/i.test(html)
         ? html.replace(/<head([^>]*)>/i, `<head$1><base href="${state.url}">`)
         : `<base href="${state.url}">` + html;
     }
     $("previewFrame").srcdoc = html;
-    $("previewFrame").onload = () => $("previewLoader").classList.add("hidden");
-    setTimeout(() => $("previewLoader").classList.add("hidden"), 5000);
+    $("previewFrame").onload = () => $("previewLoad").classList.add("hidden");
+    setTimeout(() => $("previewLoad").classList.add("hidden"), 4500);
   }
 
+  $$(".dev").forEach((b) => {
+    b.addEventListener("click", () => {
+      $$(".dev").forEach((x) => x.classList.toggle("active", x === b));
+      $("previewFrameWrap").dataset.device = b.dataset.dev;
+    });
+  });
+
   /* Search */
-  function escRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
-  ["Html", "Css", "Js"].forEach((type) => {
-    const key = type.toLowerCase();
-    $(`search${type}`).addEventListener("input", debounce((e) => {
-      const term = e.target.value.trim();
-      const code = $(`${key}Code`);
-      if (!term) {
-        code.innerHTML = key === "html" ? highlightHTML(esc(state.html)) : key === "css" ? highlightCSS(esc(state.css)) : highlightJS(esc(state.js));
-        updateLines(`${key}Code`, `${key}LineNumbers`);
+  $$(".find").forEach((inp) => {
+    inp.addEventListener("input", debounce(() => {
+      const k = inp.dataset.k;
+      const code = $(k + "Code");
+      let html = code.innerHTML.replace(/<span class="hit">([\s\S]*?)<\/span>/g, "$1");
+      const q = inp.value.trim();
+      if (!q) {
+        code.innerHTML = k === "html" ? hiHTML(state.html) : k === "css" ? hiCSS(state.css) : hiJS(state.js);
+        lines(k + "Code", k + "Gutter");
         return;
       }
-      let html = code.innerHTML.replace(/<span class="search-highlight">([\s\S]*?)<\/span>/g, "$1");
       try {
-        const re = new RegExp("(" + escRegex(esc(term)) + ")", "gi");
-        code.innerHTML = html.replace(re, '<span class="search-highlight">$1</span>');
+        const re = new RegExp("(" + esc(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "gi");
+        code.innerHTML = html.replace(re, '<span class="hit">$1</span>');
       } catch { code.innerHTML = html; }
-    }, 200));
-    $(`search${type}`).addEventListener("keydown", (e) => {
-      if (e.key === "Escape") { e.target.value = ""; e.target.dispatchEvent(new Event("input")); }
+    }, 180));
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { inp.value = ""; inp.dispatchEvent(new Event("input")); }
     });
   });
 
   /* Format */
   function beautify(code, type) {
     if (type === "html") {
-      let out = "", indent = 0;
+      let out = "", ind = 0;
       code.replace(/>\s*</g, ">\n<").split("\n").forEach((line) => {
-        line = line.trim();
-        if (!line) return;
-        if (/^<\//.test(line)) indent = Math.max(0, indent - 1);
-        out += "  ".repeat(indent) + line + "\n";
-        if (/^<[^/!][^>]*[^/]>$/.test(line) && !/^<(meta|link|img|br|hr|input|source|area|base|col|embed|wbr)\b/i.test(line)) indent++;
+        line = line.trim(); if (!line) return;
+        if (/^<\//.test(line)) ind = Math.max(0, ind - 1);
+        out += "  ".repeat(ind) + line + "\n";
+        if (/^<[^/!][^>]*[^/]>$/.test(line) && !/^<(meta|link|img|br|hr|input|source|area|base|col|embed|wbr)\b/i.test(line)) ind++;
       });
       return out;
     }
     return code.replace(/\s*\{\s*/g, " {\n  ").replace(/;\s*/g, ";\n  ").replace(/\s*\}\s*/g, "\n}\n");
   }
-  ["Html", "Css", "Js"].forEach((type) => {
-    const key = type.toLowerCase();
-    $(`format${type}`).addEventListener("click", function () {
-      if (!state[key]) return;
-      state.formatted[key] = !state.formatted[key];
-      if (state.formatted[key]) {
-        state[key] = beautify(state.raw[key], key);
-        this.textContent = "⇄ Minify";
-      } else {
-        state[key] = state.raw[key];
-        this.textContent = "{} Format";
-      }
-      updatePanels();
+  $$("[data-fmt]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const k = btn.dataset.fmt;
+      if (!state[k]) return;
+      state.fmt[k] = !state.fmt[k];
+      state[k] = state.fmt[k] ? beautify(state.raw[k], k) : state.raw[k];
+      btn.textContent = state.fmt[k] ? "Minify" : "Format";
+      updateUI();
     });
   });
 
-  /* Copy */
-  $$(".btn-copy").forEach((btn) => {
+  /* Copy / Download / Clear */
+  $$("[data-copy]").forEach((btn) => {
     btn.addEventListener("click", async function () {
-      const type = this.id.replace("copy", "").toLowerCase();
       try {
-        await navigator.clipboard.writeText(state[type] || "");
-        this.innerHTML = "✓ Copied!";
-        this.classList.add("copied");
-        toast("Copied to clipboard");
-        setTimeout(() => { this.innerHTML = "📋 Copy"; this.classList.remove("copied"); }, 2000);
-      } catch { toast("Copy failed", "error"); }
+        await navigator.clipboard.writeText(state[this.dataset.copy] || "");
+        const o = this.textContent; this.textContent = "Copied!"; this.classList.add("ok");
+        toast("Copied");
+        setTimeout(() => { this.textContent = o; this.classList.remove("ok"); }, 1600);
+      } catch { toast("Copy failed", true); }
     });
   });
 
-  /* Download */
-  function download(content, filename, mime) {
+  function dl(content, name, mime) {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([content || ""], { type: mime }));
-    a.download = filename;
+    a.download = name;
     a.click();
     URL.revokeObjectURL(a.href);
   }
-  $$(".btn-download, .btn-download-all").forEach((btn) => {
+  $$("[data-dl]").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (!state.hasData) return;
-      const type = btn.dataset.type;
-      if (type === "all") {
-        download(state.html, "sourcew-source.html", "text/html");
-        setTimeout(() => download(state.css, "sourcew-style.css", "text/css"), 200);
-        setTimeout(() => download(state.js, "sourcew-script.js", "application/javascript"), 400);
-        toast("Downloading all 3 files...");
+      const t = btn.dataset.dl;
+      if (t === "all") {
+        dl(state.html, "sourcew-source.html", "text/html");
+        setTimeout(() => dl(state.css, "sourcew-style.css", "text/css"), 180);
+        setTimeout(() => dl(state.js, "sourcew-script.js", "application/javascript"), 360);
+        toast("Downloading all files…");
       } else {
         const map = { html: [state.html, "sourcew-source.html", "text/html"], css: [state.css, "sourcew-style.css", "text/css"], js: [state.js, "sourcew-script.js", "application/javascript"] };
-        const [c, n, m] = map[type];
-        download(c, n, m);
-        toast("Downloading " + type.toUpperCase() + "...");
+        const [c, n, m] = map[t];
+        dl(c, n, m);
+        toast("Downloading " + t.toUpperCase());
       }
     });
   });
 
-  /* Clear */
   $("clearBtn").addEventListener("click", () => {
     if (!state.hasData) return;
-    $$(".tab-panel").forEach((p) => { p.style.transition = "all .3s"; p.style.opacity = "0"; p.style.transform = "translateZ(-200px)"; });
-    setTimeout(() => {
-      Object.assign(state, { url: "", html: "", css: "", js: "", resources: [], hasData: false, stats: { htmlSize: 0, cssSize: 0, jsSize: 0, htmlLines: 0, cssLines: 0, jsLines: 0, resourceCount: 0, time: "0" }, raw: { html: "", css: "", js: "" }, formatted: { html: false, css: false, js: false } });
-      $("urlInput").value = "";
-      $("inputValidation").textContent = "";
-      $("urlInput").classList.remove("valid", "invalid");
-      $("htmlCode").innerHTML = ""; $("cssCode").innerHTML = ""; $("jsCode").innerHTML = "";
-      $("resourceList").innerHTML = '<li class="resource-empty">No resources found. Extract a URL to see external assets.</li>';
-      ["html", "css", "js"].forEach((t) => {
-        $(`${t}LineNumbers`).innerHTML = "<span>1</span>";
-        $(`${t}Size`).textContent = "0 B";
-        $(`${t}Lines`).textContent = "0 lines";
-      });
-      $("actionBar").classList.add("hidden");
-      $("resultsSection").classList.add("hidden");
-      $("statsBar").classList.add("hidden");
-      $("emptyState").classList.remove("hidden");
-      $$(".tab-panel").forEach((p) => { p.style.opacity = ""; p.style.transform = ""; p.classList.remove("fly-in"); });
-      $$(".tab-btn").forEach((b) => { const on = b.dataset.tab === "html"; b.classList.toggle("active", on); b.setAttribute("aria-selected", on); });
-      $$(".tab-panel").forEach((p) => { const on = p.id === "panel-html"; p.classList.toggle("active", on); p.hidden = !on; });
-      $("urlInput").focus();
-      toast("All content cleared");
-    }, 300);
+    Object.assign(state, {
+      url: "", html: "", css: "", js: "", resources: [], hasData: false,
+      stats: { html: 0, css: 0, js: 0, res: 0, time: "0" },
+      raw: { html: "", css: "", js: "" }, fmt: { html: false, css: false, js: false },
+    });
+    $("urlInput").value = "";
+    $("readyBadge").classList.add("hidden");
+    $("results").classList.add("hidden");
+    $("emptyState").classList.remove("hidden");
+    $("timePill").classList.add("hidden");
+    $("urlInput").focus();
+    toast("Cleared");
   });
 
   /* Manual */
-  function showManual() {
+  function openManual() {
     $("manualModal").classList.remove("hidden");
     $("manualInput").focus();
   }
-  $("openManual").addEventListener("click", showManual);
-  $("closeManual").addEventListener("click", () => $("manualModal").classList.add("hidden"));
-  $("parseManualBtn").addEventListener("click", () => {
+  $("manualLink").addEventListener("click", openManual);
+  $("manualClose").addEventListener("click", () => $("manualModal").classList.add("hidden"));
+  $("manualModal").addEventListener("click", (e) => { if (e.target === $("manualModal")) $("manualModal").classList.add("hidden"); });
+  $("manualInput").addEventListener("input", () => {
+    $("charCount").textContent = $("manualInput").value.length.toLocaleString() + " chars";
+  });
+  $("parseManual").addEventListener("click", () => {
     const code = $("manualInput").value.trim();
-    if (!code || code.length < 20) { toast("Please paste HTML code first", "error"); return; }
-    state.url = state.url || normalizeUrl($("urlInput").value) || "https://pasted.local";
-    parseCode(code, state.url);
+    if (code.length < 20) { toast("Paste more HTML", true); return; }
+    state.url = state.url || normalize($("urlInput").value) || "https://pasted.local";
+    parse(code, state.url);
     state.stats.time = "0";
     state.hasData = true;
     $("manualModal").classList.add("hidden");
     showResults();
-    toast("Source code parsed!", "success");
+    toast("Parsed pasted source");
   });
-  $("manualModal").addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.add("hidden"); });
 
   /* Fullscreen */
-  $$(".btn-fullscreen").forEach((btn) => {
+  $$("[data-fs]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const panel = btn.dataset.panel;
-      const content = $(`panel-${panel}`).querySelector(".code-container").cloneNode(true);
-      $("fullscreenContent").innerHTML = "";
-      $("fullscreenContent").appendChild(content);
-      $("fullscreenTitle").textContent = panel.toUpperCase() + " Code";
-      $("fullscreenOverlay").classList.remove("hidden");
+      const k = btn.dataset.fs;
+      $("fsBody").innerHTML = "";
+      $("fsBody").appendChild($("panel-" + k).querySelector(".editor").cloneNode(true));
+      $("fsTitle").textContent = k.toUpperCase();
+      $("fs").classList.remove("hidden");
     });
   });
-  $("fullscreenClose").addEventListener("click", () => $("fullscreenOverlay").classList.add("hidden"));
+  $("fsClose").addEventListener("click", () => $("fs").classList.add("hidden"));
 
-  /* Theme */
-  $("themeToggle").addEventListener("click", () => {
-    const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("sw_theme", next);
-    $("themeToggle").textContent = next === "dark" ? "☀" : "🌙";
-  });
-  if (localStorage.getItem("sw_theme") === "dark") {
-    document.documentElement.setAttribute("data-theme", "dark");
-    $("themeToggle").textContent = "☀";
-  }
-
-  /* Offline */
-  function checkOnline() {
-    if (!navigator.onLine) {
-      $("offlineBanner").classList.remove("hidden");
-      $("extractBtn").disabled = true;
-    } else {
-      $("offlineBanner").classList.add("hidden");
-      $("extractBtn").disabled = false;
-    }
-  }
-  addEventListener("online", checkOnline);
-  addEventListener("offline", checkOnline);
-  $("offlineClose").addEventListener("click", () => $("offlineBanner").classList.add("hidden"));
-  checkOnline();
-
-  /* PWA */
-  addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    installPrompt = e;
-    if (!localStorage.getItem("sw_install_dismissed")) $("installBanner").classList.remove("hidden");
-  });
-  $("installBtn").addEventListener("click", async () => {
-    if (installPrompt) { installPrompt.prompt(); installPrompt = null; }
-    $("installBanner").classList.add("hidden");
-  });
-  $("installDismiss").addEventListener("click", () => {
-    localStorage.setItem("sw_install_dismissed", "1");
-    $("installBanner").classList.add("hidden");
-  });
-
-  /* Keyboard */
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      if (!$("fullscreenOverlay").classList.contains("hidden")) { $("fullscreenOverlay").classList.add("hidden"); return; }
-      if (!$("manualModal").classList.contains("hidden")) { $("manualModal").classList.add("hidden"); return; }
-      if ($("landing").style.display !== "none" && !$("landing").classList.contains("exiting")) enterApp();
-    }
+    if (e.key !== "Escape") return;
+    if (!$("fs").classList.contains("hidden")) { $("fs").classList.add("hidden"); return; }
+    if (!$("manualModal").classList.contains("hidden")) { $("manualModal").classList.add("hidden"); return; }
+    if ($("landing").style.display !== "none" && !$("landing").classList.contains("exit")) enterApp();
   });
 
   document.addEventListener("DOMContentLoaded", () => {
-    initLanding();
-    initTilt();
+    initHero();
+    bindTilt();
   });
 })();
