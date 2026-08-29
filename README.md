@@ -1,65 +1,55 @@
-# Source W
+# Source W v2 — World-Class Extractor
 
-**Extract · Preview · Download** — any website’s HTML, CSS, JavaScript and assets from a single URL.
+Next.js 14 + TypeScript + Tailwind + Monaco + Three.js (R3F) + server extract API.
 
-Runs entirely in your browser. Nothing you extract is uploaded to a server (except optional public CORS proxies when a site blocks direct fetch).
-
-## Quick start
+## Run
 
 ```bash
-# Option A — open the file
-open index.html   # macOS
-# or double-click index.html
-
-# Option B — local server (recommended; avoids some file:// quirks)
-npm start
-# then open http://localhost:3000
+npm install
+npm run dev
 ```
 
-## Features
+Open http://localhost:3000 → Enter → `/dashboard`
 
-- Immersive black/white landing (particles, 3D prism logo, typewriter)
-- Real CSS 3D (perspective, card tilt, button depth)
-- Mobile-first layout (48px touch targets, no iOS input zoom)
-- Extraction with CORS fallback (`allorigins` → clear error if blocked)
-- Tabs: HTML · CSS · JS · Resources · live Preview
-- Syntax highlighting, file sizes, copy & download
-- Dramatic extract overlay (scanner, data streams, particle burst)
-- `prefers-reduced-motion` respected
+Deploy: `npx vercel` (API route needs Node runtime).
 
-## Keyboard
+## Implemented
 
-| Key | Action |
-|-----|--------|
-| `Esc` | Skip landing |
-| `Ctrl` + `Enter` | Start extract (from URL field) |
+### Extraction
+- **Server** `POST /api/extract` — fetch HTML without browser CORS
+- **External CSS/JS** — up to 8 stylesheets + 8 scripts fetched server-side and merged into tabs
+- Cheerio DOM parse (meta, link, script, img, srcset, fonts, video, audio, iframe, SVG count)
+- Client fallback: allorigins → corsproxy → codetabs
+- Manual paste modal
 
-## CORS note
+### UI
+- Landing: Three.js wireframe boxes + stars (WebGL) with canvas 2D fallback
+- Monaco editor (toggle Plain mode)
+- Stats, ZIP + single-file + per-type download
+- Image gallery in Resources
+- Device frames + address bar in Preview
+- Drag-drop URL, history, theme, offline banner
+- PWA: manifest + service worker (`/sw.js`) + install banner
+- IndexedDB: cache last extractions + history
 
-Many sites block browser `fetch` from other origins. Source W tries:
+### Not included (needs dedicated infra)
+- Puppeteer/Playwright full SPA render (requires chromium serverless layer)
+- Full offline extract (needs network)
 
-1. Direct `fetch`
-2. Public proxy (`api.allorigins.win`)
+## Structure
 
-If both fail, you’ll see a toast. For reliable use, run your own proxy (e.g. a Cloudflare Worker) and point the app at it.
-
-## Browser support
-
-- Modern Chromium, Firefox, Safari
-- WebGL not required (Canvas 2D + CSS 3D only)
-- WebGPU not required
-
-## Project files
-
-| File | Role |
-|------|------|
-| `index.html` | Structure, landing + app shell |
-| `style.css` | Monochrome design system + 3D + motion |
-| `script.js` | Particles, extract, parse, highlight, download |
-| `favicon.svg` | Tab icon |
-| `manifest.webmanifest` | Installable / theme color |
-| `robots.txt` | Crawlers (if hosted publicly) |
+```
+app/api/extract/route.ts   # server fetch + external assets
+app/dashboard/page.tsx
+app/page.tsx               # landing
+components/landing/        # Hero + Scene3D
+components/dashboard/      # main UI
+components/editor/         # Monaco wrapper
+components/ui/             # SW register, install banner
+lib/                       # extractor, parser, download, storage, idb
+public/sw.js
+```
 
 ## License
 
-Use and modify freely for personal or commercial projects.
+MIT
