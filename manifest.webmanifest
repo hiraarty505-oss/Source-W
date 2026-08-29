@@ -1,15 +1,14 @@
 {
   "name": "Source W",
   "short_name": "Source W",
-  "description": "Extract, preview, and download any website's HTML, CSS, JavaScript and assets from a single URL.",
-  "start_url": "./index.html",
+  "description": "Extract, preview, and download website source code",
+  "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "lang": "en",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
   "icons": [
     {
-      "src": "favicon.svg",
+      "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
